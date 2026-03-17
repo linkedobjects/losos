@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="credentials" content="nope">
+  <title>Mission Control — LOSOS Todo</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #faf9f7;
+      min-height: 100vh;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    #losos {
+      max-width: 780px;
+      margin: 48px auto;
+      padding: 0 20px;
+    }
+    button.pane-tab {
+      color: #64748b !important;
+      font-weight: 500 !important;
+      transition: color 0.15s !important;
+    }
+    button.pane-tab:hover {
+      color: #0f172a !important;
+    }
+    button.pane-tab[aria-selected="true"] {
+      color: #6366f1 !important;
+      font-weight: 600 !important;
+    }
+    @media (max-width: 640px) {
+      #losos { margin: 20px auto; padding: 0 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json" src="todo-data.jsonld"></script>
+<script>
+(function() {
+  var p = new URLSearchParams(window.location.search).get('tracker')
+  if (p) document.getElementById('data').setAttribute('src', p)
+})()
+</script>
+
+<script type="module" data-pane src="panes/todo-pane.js"></script>
+<script type="module" data-pane src="panes/pod-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+<script src="https://unpkg.com/xlogin" data-guest="edc1556d5a81a8f14bf0c113017fd78d19442988f20e84a6206a6939ec882a12"></script>
+
+<div id="losos"></div>
+<script type="module" src="https://linkedobjects.github.io/losos/packages/shell/index.js"></script>
+<script>
+(function persistTab() {
+  var KEY = 'losos-active-tab'
+  var root = document.getElementById('losos')
+  var restored = false
+
+  new MutationObserver(function() {
+    var tabs = root.querySelectorAll('button.pane-tab')
+    if (!tabs.length) return
+
+    // Restore saved tab (once)
+    if (!restored) {
+      restored = true
+      var saved = localStorage.getItem(KEY)
+      if (saved) {
+        tabs.forEach(function(t) {
+          if (t.textContent.trim() === saved) t.click()
+        })
+      }
+    }
+
+    // Persist on click
+    tabs.forEach(function(t) {
+      if (!t._persistBound) {
+        t._persistBound = true
+        t.addEventListener('click', function() {
+          localStorage.setItem(KEY, t.textContent.trim())
+        })
+      }
+    })
+  }).observe(root, { childList: true, subtree: true })
+})()
+</script>
+</body>
+</html>

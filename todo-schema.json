@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "todo-schema.json",
+  "title": "LOSOS Todo Tracker",
+  "description": "A wf:Tracker containing ical:Vtodo issues",
+  "type": "object",
+  "required": ["@context", "@id", "@type", "title", "initialState", "issue"],
+  "properties": {
+    "@context": { "type": "object" },
+    "@id": { "type": "string" },
+    "$schema": { "type": "string" },
+    "@type": { "const": "Tracker" },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Tracker name (dct:title)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Long description (ical:description)"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this tracker was created (dct:created)"
+    },
+    "initialState": {
+      "type": "string",
+      "enum": ["NEEDS-ACTION", "IN-PROCESS", "COMPLETED", "CANCELLED"],
+      "default": "NEEDS-ACTION",
+      "description": "Default status for new issues (wf:initialState)"
+    },
+    "issue": {
+      "type": "array",
+      "description": "All issues in this tracker (wf:issue)",
+      "items": { "$ref": "#/$defs/issue" }
+    }
+  },
+  "$defs": {
+    "issue": {
+      "title": "Issue (ical:Vtodo)",
+      "type": "object",
+      "required": ["@id", "@type", "summary", "status"],
+      "properties": {
+        "@id": {
+          "type": "string",
+          "pattern": "^#Iss",
+          "description": "Fragment ID, convention: #Iss + timestamp ms"
+        },
+        "@type": { "const": "Vtodo" },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Task title (ical:summary)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description (ical:description)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["NEEDS-ACTION", "IN-PROCESS", "COMPLETED", "CANCELLED"],
+          "default": "NEEDS-ACTION",
+          "description": "RFC 5545 VTODO status (ical:status)"
+        },
+        "categories": {
+          "type": "string",
+          "description": "Category label (ical:categories)"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9,
+          "description": "RFC 5545 priority: 0=undefined, 1=highest, 9=lowest (ical:priority)"
+        },
+        "due": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Due date (ical:due)"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp (dct:created)"
+        },
+        "modified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modified timestamp (ical:lastModified)"
+        }
+      }
+    }
+  }
+}

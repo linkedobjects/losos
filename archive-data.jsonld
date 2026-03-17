@@ -1,0 +1,33 @@
+{
+  "@context": {
+    "ical": "http://www.w3.org/2002/12/cal/ical#",
+    "wf": "http://www.w3.org/2005/01/wf/flow#",
+    "dct": "http://purl.org/dc/terms/",
+    "summary": "ical:summary",
+    "description": "ical:description",
+    "status": "ical:status",
+    "categories": "ical:categories",
+    "created": "dct:created",
+    "modified": "ical:lastModified",
+    "title": "dct:title",
+    "initialState": "wf:initialState",
+    "issue": "wf:issue",
+    "Tracker": "wf:Tracker",
+    "Vtodo": "ical:Vtodo"
+  },
+  "@id": "#this",
+  "@type": "Tracker",
+  "title": "Archive",
+  "created": "2026-03-16T08:30:25.036Z",
+  "initialState": "NEEDS-ACTION",
+  "issue": [
+    {
+      "@id": "#Iss1773677665943",
+      "@type": "Vtodo",
+      "summary": "done stuff",
+      "status": "NEEDS-ACTION",
+      "created": "2026-03-16T16:14:25.943Z",
+      "modified": "2026-03-16T16:14:25.943Z"
+    }
+  ]
+}
