@@ -1,0 +1,45 @@
+{
+  "name": "@linkedobjects/losos",
+  "version": "0.0.1",
+  "description": "A 6KB reactive framework for building apps on linked data. No build step. No dependencies. No virtual DOM.",
+  "type": "module",
+  "main": "losos/losos.js",
+  "module": "losos/losos.js",
+  "exports": {
+    ".": "./losos/losos.js",
+    "./store": "./losos/store.js",
+    "./html": "./losos/html.js",
+    "./shell": "./losos/shell.js",
+    "./registry": "./losos/registry.js",
+    "./lion": "./lion/index.js",
+    "./store-crdt": "./losos/store-crdt.js"
+  },
+  "files": [
+    "losos/",
+    "lion/",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "reactive",
+    "framework",
+    "json-ld",
+    "linked-data",
+    "solid",
+    "no-build",
+    "6kb",
+    "tagged-templates",
+    "websocket",
+    "panes"
+  ],
+  "author": "Melvin Carvalho",
+  "license": "AGPL-3.0",
+  "homepage": "https://losos.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linkedobjects/losos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/linkedobjects/losos/issues"
+  }
+}
