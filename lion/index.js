@@ -98,22 +98,53 @@ export class Store {
     return results
   }
 
+  /** rdflib compatibility: match(subject, predicate, object, graph) */
+  match(subject, predicate, object, graph) {
+    return this.statementsMatching(subject, predicate, object)
+  }
+
+  /** rdflib compatibility: any(subject, predicate) — return first matching object */
+  any(subject, predicate) {
+    var stmts = this.statementsMatching(subject, predicate)
+    return stmts.length > 0 ? stmts[0].object : undefined
+  }
+
+  /** rdflib compatibility: each(subject, predicate) — return all matching objects */
+  each(subject, predicate) {
+    return this.statementsMatching(subject, predicate).map(function(st) { return st.object })
+  }
+
+  /** rdflib compatibility: holds(subject, predicate, object) — check if triple exists */
+  holds(subject, predicate, object) {
+    var stmts = this.statementsMatching(subject, predicate, object)
+    return stmts.length > 0
+  }
+
   /** Compatibility: mimic rdflib statementsMatching */
   statementsMatching(subject, predicate, object) {
     const node = typeof subject === 'string' ? this.get(subject)
       : subject?.value ? this.get(subject.value) : null
     if (!node) return []
 
+    const predFilter = predicate ? (typeof predicate === 'string' ? predicate : predicate.value) : null
+    const objFilter = object ? (typeof object === 'string' ? object : object.value) : null
+
     const stmts = []
     for (const [key, val] of Object.entries(node)) {
       if (key.startsWith('@') && key !== '@type') continue
       const predUri = key === '@type'
         ? 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' : key
+
+      if (predFilter && predUri !== predFilter && !predUri.includes(predFilter)) continue
+
       const values = Array.isArray(val) ? val : [val]
       for (const v of values) {
         const obj = typeof v === 'object' && v['@id']
           ? { termType: 'NamedNode', value: v['@id'] }
           : { termType: 'Literal', value: String(v) }
+
+        if (objFilter && obj.value !== objFilter) continue
+
         stmts.push({
           subject: { termType: 'NamedNode', value: node['@id'] },
           predicate: { termType: 'NamedNode', value: predUri },

@@ -58,13 +58,25 @@ async function loadData() {
   return { store, rawData }
 }
 
+/** Create a rdflib-compatible NamedNode */
+function namedNode(value) {
+  var docUri = value.replace(/#.*$/, '') || value
+  return {
+    termType: 'NamedNode',
+    value: value,
+    uri: value,
+    doc: function() { return namedNode(docUri) },
+    toString: function() { return value }
+  }
+}
+
 /** Find the primary subject (@id or #this) */
 function findSubject(store) {
   const hashThis = store.get('#this')
-  if (hashThis) return { termType: 'NamedNode', value: '#this' }
+  if (hashThis) return namedNode('#this')
 
   for (const [id, node] of store.nodes) {
-    if (node['@type']) return { termType: 'NamedNode', value: id }
+    if (node['@type']) return namedNode(id)
   }
 
   return null
@@ -165,7 +177,7 @@ export async function resolvePane(node, store, container, rawData, opts) {
   opts = opts || {}
   var panes = opts.panes || _panes
   var registry = opts.registry || _registry
-  var subject = { termType: 'NamedNode', value: node['@id'] || '#this' }
+  var subject = namedNode(node['@id'] || '#this')
 
   // 1. Local panes — first canHandle match
   for (var pane of panes) {
