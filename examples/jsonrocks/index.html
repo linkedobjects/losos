@@ -173,7 +173,7 @@
     bootShell()
   }
 
-  if (/mempool\.space/.test(uri) || /news\.ycombinator\.com/.test(uri) || /reddit\.com/.test(uri)) {
+  if (/github\.com/.test(uri) || /mempool\.space/.test(uri) || /news\.ycombinator\.com/.test(uri) || /reddit\.com/.test(uri)) {
     bootDirect(uri)
     return
   }
@@ -184,16 +184,10 @@
     + '<div class="jr-loading">Fetching ' + uri + '...</div>'
     + '</div>'
 
-  // Fetch from json.rocks — the response is an HTML page with embedded JSON-LD
-  fetch('https://json.rocks/?uri=' + encodeURIComponent(uri))
-    .then(function(r) { return r.text() })
-    .then(function(html) {
-      // Extract JSON from the response — it's inside <script type="application/ld+json" id="data">
-      var match = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/)
-      if (!match) throw new Error('No JSON-LD found in response')
-      var scraped = JSON.parse(match[1])
-
-      // Check for error responses
+  // Fetch from json.rocks /api endpoint — returns raw JSON
+  fetch('https://json.rocks/api?uri=' + encodeURIComponent(uri))
+    .then(function(r) { return r.json() })
+    .then(function(scraped) {
       if (scraped.error) throw new Error(scraped.message || scraped.error)
 
       var jsonLd = transformToJsonLd(scraped)
