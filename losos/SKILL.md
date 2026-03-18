@@ -367,13 +367,27 @@ setInterval(function() {
 | Root `@id` is not `#this` | Shell expects `#this` — use `"@id": "#this"` on the root node |
 | Quick Start store has no url — changes lost on reload | Add `url: 'data.jsonld'` to `createStore` options to enable auto-save via PUT |
 
+## Namespace Helper (mashlib-next compat)
+
+```js
+import { Namespace } from '../losos/losos.js'
+var SCHEMA = Namespace('https://schema.org/')
+var title = store.any(subject, SCHEMA('name'))
+```
+
+LION store also supports: `store.match()`, `store.any()`, `store.each()`, `store.holds()` — rdflib compatible. mashlib-next panes run on LOSOS with zero code changes.
+
 ## Links
 
 - **Docs:** https://losos.org/docs/
-- **Examples:** https://losos.org/examples/ (music, reddit, countries, pokedex, github)
+- **Examples:** https://losos.org/examples/ (music, CRM, countries, pokedex, reddit, github, json.rocks browser, dashboard, vcard, react compat)
+- **CRM:** https://losos.org/crm/
+- **json.rocks Browser:** https://losos.org/examples/jsonrocks/
 - **Quick Start:** https://losos.org/docs/quickstart.html
 - **API Reference:** https://losos.org/docs/api.html
 - **Gotchas:** https://losos.org/docs/gotchas.html
 - **Architecture:** https://losos.org/docs/architecture.html
 - **Nested Panes:** https://losos.org/docs/nested-panes.html
+- **JSON Schema:** https://losos.org/docs/json-schema.html
 - **Real-time:** https://losos.org/docs/realtime.html
+- **npm:** https://www.npmjs.com/package/@linkedobjects/losos
