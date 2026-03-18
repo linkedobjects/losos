@@ -28,6 +28,20 @@ async function loadPanes() {
 /** Parse JSON-LD data islands into a store, return { store, rawData } */
 async function loadData() {
   var rawData = null
+  var uriParam = new URLSearchParams(window.location.search).get('uri')
+
+  // If ?uri= is provided, fetch that document
+  if (uriParam) {
+    try {
+      var res = await fetch(uriParam.replace(/#.*$/, ''), { headers: { 'Accept': 'application/ld+json' } })
+      var parsed = await res.json()
+      rawData = parsed
+      var dataEl = document.querySelector('script[type="application/ld+json"]')
+      if (dataEl) { dataEl.__jsonLd = parsed; dataEl.textContent = JSON.stringify(parsed) }
+    } catch (err) {
+      console.warn('[losos] Failed to fetch ?uri=:', uriParam, err)
+    }
+  }
 
   for (const el of document.querySelectorAll('script[type="application/ld+json"][src]')) {
     try {
@@ -84,6 +98,15 @@ function namedNode(value, baseUrl) {
 
 /** Find the primary subject (@id or #this) */
 function findSubject(store, baseUrl) {
+  // Check ?uri= fragment first
+  var uriParam = new URLSearchParams(window.location.search).get('uri')
+  if (uriParam) {
+    var hash = uriParam.indexOf('#')
+    var fragId = hash >= 0 ? uriParam.slice(hash) : '#this'
+    var node = store.get(fragId)
+    if (node) return namedNode(fragId, baseUrl)
+  }
+
   const hashThis = store.get('#this')
   if (hashThis) return namedNode('#this', baseUrl)
 
