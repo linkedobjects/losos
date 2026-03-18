@@ -152,6 +152,7 @@ function renderTabs(panes, container, subject, store, rawData, opts) {
     if (!first) first = { pane, tab }
   }
 
+  if (opts.tabs === false) tabBar.style.display = 'none'
   container.appendChild(tabBar)
   container.appendChild(content)
 
