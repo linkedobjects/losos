@@ -1,0 +1,6 @@
+.acl
+*.acl
+.idp
+.claude
+melvin/
+node_modules/

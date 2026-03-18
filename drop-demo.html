@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOSOS — Drag Panes Demo</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body { font-family: Georgia, serif; background: #fafaf8; color: #2c2c2c; }
+    .wrap { max-width: 860px; margin: 48px auto; padding: 0 20px; }
+    h1 { font-weight: normal; font-size: 2em; text-align: center; margin-bottom: 8px; }
+    .sub { text-align: center; color: #888; font-size: 0.95em; font-family: Inter, system-ui, sans-serif; margin-bottom: 32px; }
+
+    .target {
+      min-height: 300px;
+      background: #fff;
+      border: 2px dashed #e5e3de;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 24px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .target.over { border-color: #6366f1; background: rgba(99,102,241,0.02); }
+    .target.has-pane { border-style: solid; }
+
+    .pane-cards {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    }
+    .pane-card {
+      width: 140px; height: 120px;
+      background: #fff; border: 1px solid #e5e3de; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      cursor: grab; text-decoration: none; color: #2c2c2c;
+      transition: transform 0.15s, box-shadow 0.15s;
+      user-select: none;
+    }
+    .pane-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .pane-card:active { transform: scale(0.97); }
+    .pane-card .icon { font-size: 32px; }
+    .pane-card .label { font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 500; }
+
+    .footer { text-align: center; margin-top: 24px; font-family: Inter, system-ui, sans-serif; font-size: 13px; color: #bbb; }
+    .footer a { color: #1a5276; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Drag a pane onto the data</h1>
+  <p class="sub">Same data, different views. Each pane is a separate .js file.</p>
+
+  <div class="target" id="target">
+    <div style="text-align:center;color:#ccc;padding:100px 0;font-family:Inter,system-ui,sans-serif;">
+      Drag a pane here
+    </div>
+  </div>
+
+  <div class="pane-cards">
+    <div class="pane-card" draggable="true" data-pane="list" style="border-color:#c8e6c9;background:#f1f8f1;">
+      <span class="icon">&#x1F4CB;</span>
+      <span class="label" style="color:#2e7d32;">List View</span>
+    </div>
+    <div class="pane-card" draggable="true" data-pane="card" style="border-color:#bbdefb;background:#e8f4fd;">
+      <span class="icon">&#x1F4AC;</span>
+      <span class="label" style="color:#1565c0;">Card View</span>
+    </div>
+    <div class="pane-card" draggable="true" data-pane="kanban" style="border-color:#e1bee7;background:#f3e5f5;">
+      <span class="icon">&#x1F4CA;</span>
+      <span class="label" style="color:#7b1fa2;">Kanban</span>
+    </div>
+    <div class="pane-card" draggable="true" data-pane="mindmap" style="border-color:#ffcc80;background:#fff8e1;">
+      <span class="icon">&#x1F9E0;</span>
+      <span class="label" style="color:#e65100;">Mind Map</span>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+// The data — same for both panes
+var data = [
+  { id: '1', name: 'Buy groceries', done: false },
+  { id: '2', name: 'Fix the sidebar', done: false },
+  { id: '3', name: 'Write documentation', done: true },
+  { id: '4', name: 'Deploy to pod', done: false }
+]
+
+// Two completely different panes — each a .js-style render function
+var panes = {
+  list: function(container) {
+    container.innerHTML = ''
+    container.style.background = '#f1f8f1'
+    container.style.borderColor = '#c8e6c9'
+    var h = document.createElement('h2')
+    h.textContent = 'List View'
+    h.style.cssText = 'font-weight:normal;font-style:italic;margin-bottom:16px;color:#2e7d32;'
+    container.appendChild(h)
+
+    data.forEach(function(item) {
+      var row = document.createElement('div')
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #c8e6c9;'
+
+      var cb = document.createElement('div')
+      cb.style.cssText = 'width:18px;height:18px;border-radius:4px;flex-shrink:0;cursor:pointer;' +
+        (item.done ? 'background:#2e7d32;display:flex;align-items:center;justify-content:center;' : 'border:1.5px solid #81c784;')
+      if (item.done) { cb.innerHTML = '<span style="color:#fff;font-size:10px">✓</span>' }
+      cb.addEventListener('click', function() { item.done = !item.done; panes.list(container) })
+      row.appendChild(cb)
+
+      var span = document.createElement('span')
+      span.textContent = item.name
+      span.style.cssText = 'font-size:0.95em;' + (item.done ? 'color:#a5d6a7;text-decoration:line-through;' : 'color:#1b5e20;')
+      row.appendChild(span)
+
+      container.appendChild(row)
+    })
+  },
+
+  card: function(container) {
+    container.innerHTML = ''
+    container.style.background = '#e8f4fd'
+    container.style.borderColor = '#bbdefb'
+    var h = document.createElement('h2')
+    h.textContent = 'Card View'
+    h.style.cssText = 'font-weight:normal;font-style:italic;margin-bottom:16px;color:#1565c0;'
+    container.appendChild(h)
+
+    var grid = document.createElement('div')
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;'
+
+    data.forEach(function(item) {
+      var card = document.createElement('div')
+      card.style.cssText = 'padding:20px;border-radius:10px;cursor:pointer;transition:transform 0.15s;' +
+        (item.done ? 'background:#bbdefb;' : 'background:#fff;border:1px solid #90caf9;')
+      card.addEventListener('mouseenter', function() { card.style.transform = 'translateY(-2px)' })
+      card.addEventListener('mouseleave', function() { card.style.transform = 'none' })
+      card.addEventListener('click', function() { item.done = !item.done; panes.card(container) })
+
+      var status = document.createElement('div')
+      status.textContent = item.done ? '✓ Done' : '○ Active'
+      status.style.cssText = 'font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.05em;margin-bottom:8px;color:' + (item.done ? '#1565c0' : '#64b5f6') + ';'
+      card.appendChild(status)
+
+      var name = document.createElement('div')
+      name.textContent = item.name
+      name.style.cssText = 'font-size:1em;' + (item.done ? 'color:#90caf9;text-decoration:line-through;' : 'color:#0d47a1;')
+      card.appendChild(name)
+
+      grid.appendChild(card)
+    })
+
+    container.appendChild(grid)
+  },
+
+  kanban: function(container) {
+    container.innerHTML = ''
+    container.style.background = '#f3e5f5'
+    container.style.borderColor = '#e1bee7'
+    var h = document.createElement('h2')
+    h.textContent = 'Kanban'
+    h.style.cssText = 'font-weight:normal;font-style:italic;margin-bottom:16px;color:#7b1fa2;'
+    container.appendChild(h)
+
+    var cols = document.createElement('div')
+    cols.style.cssText = 'display:flex;gap:16px;'
+
+    var active = data.filter(function(i) { return !i.done })
+    var done = data.filter(function(i) { return i.done })
+
+    function makeCol(title, items, isDoneCol) {
+      var col = document.createElement('div')
+      col.style.cssText = 'flex:1;background:rgba(255,255,255,0.6);border-radius:10px;padding:16px;min-height:200px;'
+
+      var colTitle = document.createElement('div')
+      colTitle.textContent = title
+      colTitle.style.cssText = 'font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:700;color:#7b1fa2;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;'
+      col.appendChild(colTitle)
+
+      items.forEach(function(item) {
+        var card = document.createElement('div')
+        card.style.cssText = 'background:#fff;border:1px solid #e1bee7;border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;font-size:0.9em;transition:transform 0.1s,box-shadow 0.1s;color:#4a148c;'
+        card.textContent = item.name
+        card.addEventListener('mouseenter', function() { card.style.transform = 'translateY(-1px)'; card.style.boxShadow = '0 2px 8px rgba(123,31,162,0.1)' })
+        card.addEventListener('mouseleave', function() { card.style.transform = 'none'; card.style.boxShadow = 'none' })
+        card.addEventListener('click', function() { item.done = !item.done; panes.kanban(container) })
+        col.appendChild(card)
+      })
+
+      return col
+    }
+
+    cols.appendChild(makeCol('Active', active, false))
+    cols.appendChild(makeCol('Done', done, true))
+    container.appendChild(cols)
+  },
+
+  mindmap: function(container) {
+    container.innerHTML = ''
+    container.style.background = '#fff8e1'
+    container.style.borderColor = '#ffcc80'
+
+    var h = document.createElement('h2')
+    h.textContent = 'Mind Map'
+    h.style.cssText = 'font-weight:normal;font-style:italic;margin-bottom:16px;color:#e65100;'
+    container.appendChild(h)
+
+    // SVG mind map
+    var w = container.clientWidth - 64
+    var cx = w / 2
+    var cy = 140
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('width', w)
+    svg.setAttribute('height', 300)
+    svg.style.cssText = 'display:block;margin:0 auto;'
+
+    // Center node
+    var centerR = 40
+    var center = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    center.setAttribute('cx', cx)
+    center.setAttribute('cy', cy)
+    center.setAttribute('r', centerR)
+    center.setAttribute('fill', '#ff9800')
+    svg.appendChild(center)
+
+    var centerText = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+    centerText.setAttribute('x', cx)
+    centerText.setAttribute('y', cy + 4)
+    centerText.setAttribute('text-anchor', 'middle')
+    centerText.setAttribute('font-size', '12')
+    centerText.setAttribute('font-family', 'Inter, system-ui, sans-serif')
+    centerText.setAttribute('font-weight', '600')
+    centerText.setAttribute('fill', '#fff')
+    centerText.textContent = 'Tasks'
+    svg.appendChild(centerText)
+
+    // Branch nodes
+    var angleStep = (Math.PI * 2) / data.length
+    var branchR = 110
+
+    data.forEach(function(item, i) {
+      var angle = angleStep * i - Math.PI / 2
+      var bx = cx + Math.cos(angle) * branchR
+      var by = cy + Math.sin(angle) * branchR
+
+      // Line
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+      line.setAttribute('x1', cx)
+      line.setAttribute('y1', cy)
+      line.setAttribute('x2', bx)
+      line.setAttribute('y2', by)
+      line.setAttribute('stroke', item.done ? '#ffcc80' : '#ff9800')
+      line.setAttribute('stroke-width', item.done ? '1' : '2')
+      svg.appendChild(line)
+
+      // Node circle
+      var nodeR = 30
+      var node = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      node.setAttribute('cx', bx)
+      node.setAttribute('cy', by)
+      node.setAttribute('r', nodeR)
+      node.setAttribute('fill', item.done ? '#ffcc80' : '#fff')
+      node.setAttribute('stroke', item.done ? '#ffcc80' : '#ff9800')
+      node.setAttribute('stroke-width', '2')
+      node.style.cursor = 'pointer'
+      node.style.transition = 'r 0.15s'
+      node.addEventListener('mouseenter', function() { node.setAttribute('r', nodeR + 4) })
+      node.addEventListener('mouseleave', function() { node.setAttribute('r', nodeR) })
+      node.addEventListener('click', function() { item.done = !item.done; panes.mindmap(container) })
+      svg.appendChild(node)
+
+      // Check mark for done
+      if (item.done) {
+        var check = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+        check.setAttribute('x', bx)
+        check.setAttribute('y', by + 5)
+        check.setAttribute('text-anchor', 'middle')
+        check.setAttribute('font-size', '16')
+        check.setAttribute('fill', '#e65100')
+        check.textContent = '✓'
+        check.style.pointerEvents = 'none'
+        svg.appendChild(check)
+      }
+
+      // Label
+      var label = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+      label.setAttribute('x', bx)
+      label.setAttribute('y', by + nodeR + 16)
+      label.setAttribute('text-anchor', 'middle')
+      label.setAttribute('font-size', '11')
+      label.setAttribute('font-family', 'Inter, system-ui, sans-serif')
+      label.setAttribute('fill', item.done ? '#ffcc80' : '#e65100')
+      if (item.done) label.setAttribute('text-decoration', 'line-through')
+      label.textContent = item.name
+      label.style.pointerEvents = 'none'
+      svg.appendChild(label)
+    })
+
+    container.appendChild(svg)
+  }
+}
+
+// Drag and drop
+var target = document.getElementById('target')
+
+document.querySelectorAll('.pane-card').forEach(function(card) {
+  card.addEventListener('dragstart', function(e) {
+    e.dataTransfer.setData('text/plain', card.dataset.pane)
+    e.dataTransfer.effectAllowed = 'copy'
+  })
+  // Also allow click
+  card.addEventListener('click', function() {
+    var paneName = card.dataset.pane
+    target.classList.add('has-pane')
+    panes[paneName](target)
+  })
+})
+
+target.addEventListener('dragover', function(e) {
+  e.preventDefault()
+  target.classList.add('over')
+})
+target.addEventListener('dragleave', function() {
+  target.classList.remove('over')
+})
+target.addEventListener('drop', function(e) {
+  e.preventDefault()
+  target.classList.remove('over')
+  target.classList.add('has-pane')
+  var paneName = e.dataTransfer.getData('text/plain')
+  if (panes[paneName]) panes[paneName](target)
+})
+</script>
+</body>
+</html>

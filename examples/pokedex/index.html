@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokedex</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a2e; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #999 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #e63946 !important; font-weight: 600 !important; }
+    .pdx-boot-loading { display: flex; align-items: center; justify-content: center; height: 50vh; color: #999; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+<script type="module" data-pane src="panes/pokedex-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos"><div class="pdx-boot-loading">Loading Pokedex...</div></div>
+
+<script>
+(function() {
+  var dataEl = document.getElementById('data')
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "pokemon": "schema:hasPart",
+    "name": "schema:name",
+    "pid": "schema:identifier",
+    "sprite": "schema:image",
+    "types": "schema:keywords",
+    "hp": "schema:value",
+    "attack": "schema:maxValue",
+    "defense": "schema:minValue",
+    "spAtk": "schema:highPrice",
+    "spDef": "schema:lowPrice",
+    "speed": "schema:position",
+    "height": "schema:height",
+    "weight": "schema:weight",
+    "abilities": "schema:description",
+    "cry": "schema:audio",
+    "Pokedex": "schema:WebSite",
+    "Pokemon": "schema:CreativeWork"
+  }
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '' }
+
+  function buildJsonLd(pokemonList) {
+    return {
+      "@context": context,
+      "@id": "#this",
+      "@type": "Pokedex",
+      "title": "Pokedex",
+      "pokemon": pokemonList
+    }
+  }
+
+  function transformPokemon(p) {
+    var stats = {}
+    p.stats.forEach(function(s) {
+      var name = s.stat.name
+      if (name === 'hp') stats.hp = s.base_stat
+      else if (name === 'attack') stats.attack = s.base_stat
+      else if (name === 'defense') stats.defense = s.base_stat
+      else if (name === 'special-attack') stats.spAtk = s.base_stat
+      else if (name === 'special-defense') stats.spDef = s.base_stat
+      else if (name === 'speed') stats.speed = s.base_stat
+    })
+
+    var types = p.types.map(function(t) { return t.type.name }).join(', ')
+    var abilities = p.abilities.map(function(a) { return capitalize(a.ability.name.replace(/-/g, ' ')) }).join(', ')
+
+    return {
+      "@id": "#p" + p.id,
+      "@type": "Pokemon",
+      "name": capitalize(p.name),
+      "pid": p.id,
+      "sprite": p.sprites.other['official-artwork'].front_default || p.sprites.front_default || '',
+      "types": types,
+      "hp": stats.hp || 0,
+      "attack": stats.attack || 0,
+      "defense": stats.defense || 0,
+      "spAtk": stats.spAtk || 0,
+      "spDef": stats.spDef || 0,
+      "speed": stats.speed || 0,
+      "height": p.height,
+      "weight": p.weight,
+      "abilities": abilities,
+      "cry": p.cries && p.cries.latest ? p.cries.latest : ''
+    }
+  }
+
+  function bootShell() {
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = '../../losos/shell.js'
+    document.body.appendChild(s)
+  }
+
+  function boot(jsonLd) {
+    window.__pokedexData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    bootShell()
+  }
+
+  // Fetch first 151 pokemon (Gen 1) in parallel batches
+  var IDS = []
+  for (var i = 1; i <= 151; i++) IDS.push(i)
+
+  // Fetch in batches of 20 to avoid hammering the API
+  var allPokemon = []
+  var batchSize = 20
+
+  function fetchBatch(startIdx) {
+    var batch = IDS.slice(startIdx, startIdx + batchSize)
+    if (batch.length === 0) {
+      // All done - sort by ID and boot
+      allPokemon.sort(function(a, b) { return a.pid - b.pid })
+      boot(buildJsonLd(allPokemon))
+      return
+    }
+
+    Promise.all(batch.map(function(id) {
+      return fetch('https://pokeapi.co/api/v2/pokemon/' + id)
+        .then(function(r) { return r.json() })
+        .then(transformPokemon)
+        .catch(function() { return null })
+    })).then(function(results) {
+      results.forEach(function(p) { if (p) allPokemon.push(p) })
+      // Update loading message
+      var el = document.querySelector('.pdx-boot-loading')
+      if (el) el.textContent = 'Loading Pokedex... ' + allPokemon.length + '/151'
+      fetchBatch(startIdx + batchSize)
+    })
+  }
+
+  fetchBatch(0)
+})()
+</script>
+</body>
+</html>

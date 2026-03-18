@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quick Start — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link active" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link" href="/docs/nested-panes.html">Nested Panes</a>
+    <a class="nav-link" href="/docs/json-schema.html">JSON Schema</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>Quick Start</h1>
+    <p class="intro">One file. 30 seconds. No install.</p>
+
+    <h2>1. Create <code>index.html</code></h2>
+    <p>Copy this entire file. That's the whole app.</p>
+
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;My App&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+&lt;script type="application/ld+json"&gt;
+{
+  "@context": { "title": "http://purl.org/dc/terms/title",
+                "item": "http://schema.org/hasPart",
+                "name": "http://schema.org/name" },
+  "@id": "#this",
+  "@type": "List",
+  "title": "Shopping List",
+  "item": [
+    { "@id": "#1", "name": "Milk" },
+    { "@id": "#2", "name": "Bread" },
+    { "@id": "#3", "name": "Eggs" }
+  ]
+}
+&lt;/script&gt;
+
+&lt;div id="app"&gt;&lt;/div&gt;
+
+&lt;script type="module"&gt;
+import { createStore } from 'https://losos.org/losos/store.js'
+import { html, render, keyed } from 'https://losos.org/losos/html.js'
+
+var dataEl = document.querySelector('script[type="application/ld+json"]')
+var data = JSON.parse(dataEl.textContent)
+var store = createStore(data, { debounce: 500 })
+var root = store.get('#this')
+var app = document.getElementById('app')
+
+function renderApp() {
+  var items = store.propAll(root, 'item')
+  render(app, html`
+    &lt;h1&gt;${data.title}&lt;/h1&gt;
+    &lt;input placeholder="Add item..." onkeydown="${function(e) {
+      if (e.key !== 'Enter' || !e.target.value.trim()) return
+      store.push(root, 'item', {
+        '@id': '#' + Date.now(),
+        'name': e.target.value.trim()
+      })
+      e.target.value = ''
+    }}" /&gt;
+    &lt;ul&gt;
+      ${keyed(items, function(i) { return i['@id'] }, function(i) {
+        return html`&lt;li&gt;
+          ${i.name}
+          &lt;button onclick="${function() {
+            store.remove(root, 'item', function(x) { return x === i })
+          }}"&gt;x&lt;/button&gt;
+        &lt;/li&gt;`
+      })}
+    &lt;/ul&gt;
+    &lt;p&gt;${items.length} item${items.length === 1 ? '' : 's'}&lt;/p&gt;
+  `)
+}
+
+store.onChange(renderApp)
+renderApp()
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+    <h2>2. Open it</h2>
+<pre><code class="language-bash">npx serve .
+# or
+python3 -m http.server</code></pre>
+
+    <p>Open <code>localhost:3000</code>. Add items, delete items. It's reactive.</p>
+
+    <h2>That's it</h2>
+    <p>You just built a reactive app with:</p>
+    <ul>
+      <li>Linked data (JSON-LD with standard URIs)</li>
+      <li>Reactive store (<code>store.push()</code> triggers re-render)</li>
+      <li>Efficient DOM patching (only changed values update)</li>
+      <li>Keyed lists (items matched by <code>@id</code>, unchanged items skip re-render)</li>
+    </ul>
+    <p>No npm. No build. No dependencies. One HTML file.</p>
+
+    <hr>
+
+    <h2>What to add next</h2>
+
+    <table>
+      <tr><th>Want to...</th><th>Add this</th></tr>
+      <tr><td>Save to a server</td><td><code>createStore(data, { url: 'https://...', debounce: 800 })</code></td></tr>
+      <tr><td>Add authentication</td><td><code>&lt;script src="https://unpkg.com/xlogin"&gt;</code></td></tr>
+      <tr><td>Use pane tabs</td><td>Move code to <code>panes/my-pane.js</code>, add <code>shell.js</code></td></tr>
+      <tr><td>Live sync across devices</td><td>Server with <code>Updates-Via</code> WebSocket header</td></tr>
+      <tr><td>Fetch from an API</td><td>Transform API data to JSON-LD, boot shell after fetch</td></tr>
+    </table>
+
+    <p>See <a href="/docs/getting-started.html">Getting Started</a> for the full file-structure setup, or jump to <a href="/examples/">Examples</a> to see complete apps.</p>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

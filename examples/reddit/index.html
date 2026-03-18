@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reddit</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #dae0e6; color: #1c1c1c; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #878a8c !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #ff4500 !important; font-weight: 600 !important; }
+    .rd-boot { display: flex; align-items: center; justify-content: center; height: 50vh; color: #878a8c; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+<script type="module" data-pane src="panes/reddit-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos"><div class="rd-boot">Loading reddit...</div></div>
+
+<script>
+(function() {
+  var dataEl = document.getElementById('data')
+  var params = new URLSearchParams(location.search)
+  var sub = params.get('r') || 'EarthPorn'
+
+  function fixUrl(u) {
+    if (!u) return ''
+    return u.replace(/&amp;/g, '&')
+  }
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "as": "https://www.w3.org/ns/activitystreams#",
+    "title": "dct:title",
+    "subreddit": "schema:name",
+    "post": "as:items",
+    "postTitle": "schema:headline",
+    "author": "schema:author",
+    "score": "schema:aggregateRating",
+    "ups": "schema:upvoteCount",
+    "numComments": "schema:commentCount",
+    "created": "dct:created",
+    "selftext": "schema:text",
+    "thumbnail": "schema:thumbnailUrl",
+    "preview": "schema:image",
+    "permalink": "schema:url",
+    "domain": "schema:publisher",
+    "postSub": "schema:isPartOf",
+    "flair": "schema:keywords",
+    "stickied": "schema:position",
+    "isVideo": "schema:video",
+    "isSelf": "schema:additionalType",
+    "RedditFeed": "as:OrderedCollection",
+    "Post": "as:Note"
+  }
+
+  function transform(listing) {
+    var children = listing.data && listing.data.children || []
+    var posts = children.map(function(c, i) {
+      var d = c.data
+      var prev = ''
+      if (d.preview && d.preview.images && d.preview.images[0]) {
+        var src = d.preview.images[0].source
+        if (src) prev = fixUrl(src.url)
+      }
+      var thumb = d.thumbnail
+      if (thumb === 'self' || thumb === 'default' || thumb === 'nsfw' || thumb === 'spoiler' || !thumb) thumb = ''
+      else thumb = fixUrl(thumb)
+
+      return {
+        "@id": "#" + d.id,
+        "@type": "Post",
+        "postTitle": d.title || '',
+        "author": d.author || '',
+        "score": d.score || 0,
+        "ups": d.ups || 0,
+        "numComments": d.num_comments || 0,
+        "created": d.created_utc ? d.created_utc * 1000 : 0,
+        "selftext": (d.selftext || '').slice(0, 500),
+        "thumbnail": thumb,
+        "preview": prev,
+        "permalink": d.permalink || '',
+        "domain": d.domain || '',
+        "postSub": d.subreddit_name_prefixed || '',
+        "flair": d.link_flair_text || '',
+        "stickied": d.stickied || false,
+        "isVideo": d.is_video || false,
+        "isSelf": d.is_self || false
+      }
+    })
+
+    return {
+      "@context": context,
+      "@id": "#this",
+      "@type": "RedditFeed",
+      "title": "Reddit",
+      "subreddit": sub,
+      "post": posts
+    }
+  }
+
+  function bootShell() {
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = '../../losos/shell.js'
+    document.body.appendChild(s)
+  }
+
+  function boot(jsonLd) {
+    window.__redditData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    bootShell()
+  }
+
+  // JSONP fetch (Reddit blocks CORS but supports JSONP)
+  window.__redditCallback = function(data) {
+    boot(transform(data))
+    delete window.__redditCallback
+  }
+
+  var script = document.createElement('script')
+  script.src = 'https://www.reddit.com/r/' + encodeURIComponent(sub) + '.json?limit=25&raw_json=1&jsonp=__redditCallback'
+  script.onerror = function() {
+    document.querySelector('.rd-boot').textContent = 'Failed to load. Try refreshing.'
+  }
+  document.head.appendChild(script)
+})()
+</script>
+</body>
+</html>

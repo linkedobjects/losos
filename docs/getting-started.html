@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Getting Started — LOSOS Docs</title>
+  <meta name="description" content="Build your first LOSOS app in 5 minutes.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link active" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link" href="/docs/nested-panes.html">Nested Panes</a>
+    <a class="nav-link" href="/docs/json-schema.html">JSON Schema</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>Getting Started</h1>
+    <p class="intro">Build a complete LOSOS app in 5 minutes. No npm. No build tools.</p>
+
+    <h2>1. Get the files</h2>
+    <p>Create a project directory and copy the framework files:</p>
+<pre><code class="language-bash">my-app/
+  losos/
+    html.js       &larr; from losos.org/losos/html.js
+    store.js      &larr; from losos.org/losos/store.js
+    shell.js      &larr; from losos.org/losos/shell.js
+  lion/
+    index.js      &larr; from losos.org/lion/index.js
+  panes/
+    my-pane.js    &larr; you write this
+  data.jsonld     &larr; you write this
+  index.html      &larr; you write this</code></pre>
+
+    <h2>2. Create the data</h2>
+    <p>A JSON-LD file with <code>@context</code> mapping short keys to standard URIs:</p>
+<pre><code class="language-json">{
+  "@context": {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "item": "schema:hasPart",
+    "name": "schema:name",
+    "done": "schema:status",
+    "List": "schema:ItemList",
+    "Item": "schema:ListItem"
+  },
+  "@id": "#this",
+  "@type": "List",
+  "title": "My List",
+  "item": [
+    { "@id": "#1", "@type": "Item", "name": "First item", "done": false },
+    { "@id": "#2", "@type": "Item", "name": "Second item", "done": true }
+  ]
+}</code></pre>
+
+    <h2>3. Create the pane</h2>
+    <p>A pane is an ES module with <code>canHandle</code> and <code>render</code>:</p>
+<pre><code class="language-js">import { createStore } from '../losos/store.js'
+import { html, render, onUnmount, keyed } from '../losos/html.js'
+
+export default {
+  label: 'My App',
+  icon: '📋',
+
+  canHandle(subject, store) {
+    var node = store.get(subject.value)
+    var type = store.type(node)
+    return type && type.includes('List')
+  },
+
+  render(subject, lionStore, container, rawData) {
+    var data = rawData
+    var store = createStore(data, { debounce: 800 })
+    var root = store.get('#this')
+
+    function renderApp() {
+      var items = store.propAll(root, 'item')
+      render(container, html`
+        &lt;h1&gt;${data['title']}&lt;/h1&gt;
+        &lt;input type="text" placeholder="Add item..."
+          onkeydown="${function(e) {
+            if (e.key !== 'Enter') return
+            store.push(root, 'item', {
+              '@id': '#' + Date.now(),
+              '@type': 'Item',
+              'name': e.target.value,
+              'done': false
+            })
+            e.target.value = ''
+          }}" /&gt;
+        ${keyed(items, function(i) { return i['@id'] }, function(i) {
+          return html`
+            &lt;div&gt;
+              &lt;input type="checkbox"
+                checked="${i['done']}"
+                onchange="${function() { store.set(i, 'done', !i['done']) }}" /&gt;
+              ${i['name']}
+            &lt;/div&gt;
+          `
+        })}
+      `)
+    }
+
+    var unsub = store.onChange(renderApp)
+    setTimeout(renderApp, 0)
+    onUnmount(container, unsub)
+  }
+}</code></pre>
+
+    <h2>4. Create the HTML shell</h2>
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+  &lt;title&gt;My App&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;script type="application/ld+json" src="data.jsonld"&gt;&lt;/script&gt;
+  &lt;script type="module" data-pane src="panes/my-pane.js"&gt;&lt;/script&gt;
+  &lt;div id="losos"&gt;&lt;/div&gt;
+  &lt;script type="module" src="losos/shell.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+    <h2>5. Open in browser</h2>
+    <p>Serve with any static server:</p>
+<pre><code class="language-bash">npx serve .
+# or
+python3 -m http.server</code></pre>
+    <p>That's it. No npm install, no build, no configuration.</p>
+
+    <hr>
+
+    <h2>What happens when you load the page</h2>
+    <ol>
+      <li>Shell scans for <code>&lt;script data-pane&gt;</code> tags and loads each pane module</li>
+      <li>Shell fetches <code>data.jsonld</code> into a LION store</li>
+      <li>Shell finds the primary subject (<code>#this</code>), checks each pane's <code>canHandle</code></li>
+      <li>Shell builds a tab bar and renders the first matching pane</li>
+      <li>Shell passes the parsed JSON-LD as the 4th argument to <code>render</code></li>
+    </ol>
+
+    <h2>Adding persistence</h2>
+    <p>To auto-save changes to a Solid pod or any HTTP server that accepts PUT:</p>
+<pre><code class="language-js">var store = createStore(data, {
+  url: 'https://my-pod.example/data.jsonld',
+  authFetch: window.xlogin.authFetch,
+  debounce: 800
+})</code></pre>
+    <p>Every <code>store.set()</code> now debounces a PUT request. If the server sends an <code>Updates-Via</code> header, the store auto-subscribes to WebSocket updates.</p>
+
+    <hr>
+
+    <h2>Next steps</h2>
+    <ul>
+      <li><a href="/docs/api.html">API Reference</a> — every function in detail</li>
+      <li><a href="/docs/gotchas.html">Gotchas</a> — read before your second app</li>
+      <li><a href="/examples/">Examples</a> — 5 complete apps to learn from</li>
+    </ul>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

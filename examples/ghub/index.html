@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GitHub</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Noto Sans, Helvetica, Arial, sans-serif; background: #ffffff; color: #1f2328; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #656d76 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #0969da !important; font-weight: 600 !important; }
+    .gh-loading { display: flex; align-items: center; justify-content: center; height: 60vh; color: #656d76; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+
+<script type="module" data-pane src="panes/gh-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos"><div class="gh-loading">Loading...</div></div>
+
+<script>
+(function() {
+  var params = new URLSearchParams(location.search)
+  var owner = params.get('user') || params.get('org') || 'linkedobjects'
+  var dataEl = document.getElementById('data')
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "repo": "schema:hasPart",
+    "repoName": "schema:name",
+    "fullName": "schema:alternateName",
+    "description": "schema:description",
+    "language": "schema:programmingLanguage",
+    "langColor": "schema:color",
+    "stars": "schema:aggregateRating",
+    "forks": "schema:interactionCount",
+    "issues": "schema:commentCount",
+    "license": "schema:license",
+    "updated": "dct:modified",
+    "owner": "schema:author",
+    "ownerAvatar": "schema:image",
+    "topics": "schema:keywords",
+    "defaultBranch": "schema:version",
+    "homepage": "schema:url",
+    "file": "schema:hasPart",
+    "fileName": "schema:name",
+    "fileType": "schema:additionalType",
+    "fileSize": "schema:contentSize",
+    "commitMsg": "schema:description",
+    "commitTime": "dct:date",
+    "commitAuthor": "schema:author",
+    "readmeText": "schema:text",
+    "GH": "schema:WebSite",
+    "Repo": "schema:SoftwareSourceCode",
+    "File": "schema:DigitalDocument"
+  }
+
+  var LANG_COLORS = {
+    "JavaScript": "#f1e05a", "TypeScript": "#3178c6", "Python": "#3572A5",
+    "Java": "#b07219", "Go": "#00ADD8", "Rust": "#dea584", "C": "#555555",
+    "C++": "#f34b7d", "C#": "#178600", "Ruby": "#701516", "PHP": "#4F5D95",
+    "Swift": "#F05138", "Kotlin": "#A97BFF", "Dart": "#00B4AB",
+    "HTML": "#e34c26", "CSS": "#563d7c", "Shell": "#89e051", "Lua": "#000080"
+  }
+
+  function buildJsonLd(user, repos) {
+    return {
+      "@context": context,
+      "@id": "#this",
+      "@type": "GH",
+      "title": "GitHub",
+      "owner": user.login || owner,
+      "ownerAvatar": (user.login || owner).slice(0, 2).toUpperCase(),
+      "repo": repos.map(function(r) {
+        var topics = (r.topics || []).join(', ')
+        return {
+          "@id": "#r" + r.id,
+          "@type": "Repo",
+          "repoName": r.name,
+          "fullName": r.full_name,
+          "description": r.description || '',
+          "language": r.language || '',
+          "langColor": LANG_COLORS[r.language] || '#656d76',
+          "stars": r.stargazers_count || 0,
+          "forks": r.forks_count || 0,
+          "issues": r.open_issues_count || 0,
+          "license": r.license ? r.license.spdx_id : '',
+          "updated": r.updated_at || '',
+          "topics": topics,
+          "defaultBranch": r.default_branch || 'main',
+          "homepage": r.homepage || ''
+        }
+      })
+    }
+  }
+
+  function bootShell() {
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = '../../losos/shell.js'
+    document.body.appendChild(s)
+  }
+
+  function boot(jsonLd) {
+    window.__ghData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    bootShell()
+  }
+
+  // Fetch from GitHub API
+  var repoParam = params.get('repo') // e.g. ?repo=linkeddata/rdflib.js
+
+  if (repoParam && repoParam.indexOf('/') !== -1) {
+    // Single repo mode: fetch that repo + its org siblings
+    var repoParts = repoParam.split('/')
+    var repoOwner = repoParts[0]
+    Promise.all([
+      fetch('https://api.github.com/repos/' + repoParam).then(function(r) { return r.json() }),
+      fetch('https://api.github.com/users/' + repoOwner + '/repos?sort=updated&per_page=20').then(function(r) { return r.json() })
+    ]).then(function(results) {
+      var mainRepo = results[0]
+      var orgRepos = results[1]
+      if (!mainRepo || !mainRepo.id) throw new Error('Repo not found')
+      // Put the target repo first, then others from the same org
+      var repos = [mainRepo]
+      if (Array.isArray(orgRepos)) {
+        orgRepos.forEach(function(r) { if (r.id !== mainRepo.id) repos.push(r) })
+      }
+      boot(buildJsonLd({ login: repoOwner }, repos))
+    }).catch(function(err) {
+      console.warn('GitHub API failed, using static data:', err)
+      fetch('repo.jsonld').then(function(r) { return r.json() }).then(boot)
+    })
+  } else {
+    // Org/user mode
+    Promise.all([
+      fetch('https://api.github.com/users/' + owner).then(function(r) { return r.json() }),
+      fetch('https://api.github.com/users/' + owner + '/repos?sort=updated&per_page=20').then(function(r) { return r.json() })
+    ]).then(function(results) {
+      var user = results[0]
+      var repos = results[1]
+      if (!Array.isArray(repos)) throw new Error('API error')
+      boot(buildJsonLd(user, repos))
+    }).catch(function(err) {
+      console.warn('GitHub API failed, using static data:', err)
+      fetch('repo.jsonld').then(function(r) { return r.json() }).then(boot)
+    })
+  }
+})()
+</script>
+</body>
+</html>

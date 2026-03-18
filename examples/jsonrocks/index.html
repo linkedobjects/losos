@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>json.rocks</title>
+  <link rel="icon" href="https://json.rocks/favicon.ico">
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a2e; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #888 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #667eea !important; font-weight: 600 !important; }
+
+    .jr-search-page {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+    .jr-logo { font-size: 48px; font-weight: 300; color: #fff; margin-bottom: 8px; letter-spacing: -1px; }
+    .jr-logo strong { font-weight: 700; }
+    .jr-tagline { color: rgba(255,255,255,0.7); font-size: 16px; margin-bottom: 32px; }
+    .jr-search-form { display: flex; gap: 0; width: 100%; max-width: 580px; }
+    .jr-search-input {
+      flex: 1; padding: 14px 20px; border: none; border-radius: 28px 0 0 28px;
+      font: 400 16px/1 inherit; color: #1a1a2e; outline: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .jr-search-input::placeholder { color: #aaa; }
+    .jr-search-btn {
+      background: #ff6b6b; color: #fff; border: none; border-radius: 0 28px 28px 0;
+      padding: 14px 28px; font: 600 16px/1 inherit; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .jr-search-btn:hover { background: #ee5a24; }
+    .jr-loading { color: rgba(255,255,255,0.8); margin-top: 20px; font-size: 14px; }
+    .jr-error { color: #ff6b6b; background: rgba(255,255,255,0.1); padding: 12px 20px; border-radius: 8px; margin-top: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+
+<script type="module" data-pane src="panes/github.com-pane.js"></script>
+<script type="module" data-pane src="panes/reddit.com-pane.js"></script>
+<script type="module" data-pane src="panes/news.ycombinator.com-pane.js"></script>
+<script type="module" data-pane src="panes/mempool.space-pane.js"></script>
+<script type="module" data-pane src="panes/article-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos"></div>
+
+<script>
+(function() {
+  var dataEl = document.getElementById('data')
+  var lososEl = document.getElementById('losos')
+  var params = new URLSearchParams(location.search)
+  var uri = params.get('uri')
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "schema:name",
+    "description": "schema:description",
+    "image": "schema:image",
+    "logo": "schema:logo",
+    "author": "schema:author",
+    "publisher": "schema:publisher",
+    "date": "dct:created",
+    "url": "schema:url",
+    "lang": "schema:inLanguage",
+    "text": "schema:text",
+    "link": "schema:relatedLink",
+    "linkText": "schema:name",
+    "linkHref": "schema:url",
+    "img": "schema:associatedMedia",
+    "imgSrc": "schema:contentUrl",
+    "imgAlt": "schema:description",
+    "video": "schema:video",
+    "videoUrl": "schema:contentUrl",
+    "WebPage": "schema:WebPage",
+    "Link": "schema:WebPage",
+    "Image": "schema:ImageObject",
+    "Video": "schema:VideoObject"
+  }
+
+  function transformToJsonLd(scraped) {
+    var links = (scraped.links || []).slice(0, 30).map(function(l, i) {
+      var href = l.href || ''
+      if (href && href.startsWith('/')) try { href = new URL(href, uri).href } catch(e) {}
+      return { "@id": "#link" + i, "@type": "Link", "linkText": l.text || '', "linkHref": href }
+    })
+
+    var images = (scraped.images || []).slice(0, 30).map(function(img, i) {
+      var src = img.src || img.href || ''
+      if (src && src.startsWith('/')) try { src = new URL(src, uri).href } catch(e) {}
+      return { "@id": "#img" + i, "@type": "Image", "imgSrc": src, "imgAlt": img.alt || '' }
+    })
+
+    var videos = (scraped.videos || []).map(function(v, i) {
+      return { "@id": "#vid" + i, "@type": "Video", "videoUrl": v.url || '' }
+    })
+
+    var authorStr = Array.isArray(scraped.author) ? scraped.author.join(', ') : (scraped.author || '')
+
+    return {
+      "@context": context,
+      "@id": "#this",
+      "@type": "WebPage",
+      "title": scraped.title || 'Untitled',
+      "description": scraped.description || '',
+      "image": scraped.image || '',
+      "logo": scraped.logo || '',
+      "author": authorStr,
+      "publisher": scraped.publisher || '',
+      "date": scraped.date || '',
+      "url": scraped.canonicalLink || scraped.url || uri,
+      "lang": scraped.lang || '',
+      "text": scraped.text ? scraped.text.slice(0, 2000) : '',
+      "link": links,
+      "img": images,
+      "video": videos
+    }
+  }
+
+  function bootShell() {
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = 'https://losos.org/losos/shell.js'
+    document.body.appendChild(s)
+  }
+
+  function showSearch(errorMsg) {
+    lososEl.innerHTML = ''
+    var div = document.createElement('div')
+    div.className = 'jr-search-page'
+    div.innerHTML = '<div class="jr-logo"><strong>json</strong>.rocks</div>'
+      + '<div class="jr-tagline">Turn any URL into structured data</div>'
+      + '<form class="jr-search-form" action="">'
+      + '<input class="jr-search-input" type="text" name="uri" placeholder="Paste a URL or search..." autofocus />'
+      + '<button class="jr-search-btn" type="submit">Go</button>'
+      + '</form>'
+      + (errorMsg ? '<div class="jr-error">' + errorMsg + '</div>' : '')
+    lososEl.appendChild(div)
+  }
+
+  if (!uri) {
+    showSearch()
+    return
+  }
+
+  // Sites with their own panes — bypass json.rocks, create stub JSON-LD
+  function bootDirect(url) {
+    var jsonLd = {
+      "@context": context,
+      "@id": "#this",
+      "@type": "WebPage",
+      "url": url,
+      "title": url
+    }
+    window.__jrData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    lososEl.textContent = ''
+    bootShell()
+  }
+
+  if (/mempool\.space/.test(uri) || /news\.ycombinator\.com/.test(uri) || /reddit\.com/.test(uri)) {
+    bootDirect(uri)
+    return
+  }
+
+  // Show loading
+  lososEl.innerHTML = '<div class="jr-search-page">'
+    + '<div class="jr-logo"><strong>json</strong>.rocks</div>'
+    + '<div class="jr-loading">Fetching ' + uri + '...</div>'
+    + '</div>'
+
+  // Fetch from json.rocks — the response is an HTML page with embedded JSON-LD
+  fetch('https://json.rocks/?uri=' + encodeURIComponent(uri))
+    .then(function(r) { return r.text() })
+    .then(function(html) {
+      // Extract JSON from the response — it's inside <script type="application/ld+json" id="data">
+      var match = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/)
+      if (!match) throw new Error('No JSON-LD found in response')
+      var scraped = JSON.parse(match[1])
+
+      // Check for error responses
+      if (scraped.error) throw new Error(scraped.message || scraped.error)
+
+      var jsonLd = transformToJsonLd(scraped)
+      window.__jrData = jsonLd
+      dataEl.textContent = JSON.stringify(jsonLd)
+      lososEl.textContent = ''
+      bootShell()
+    })
+    .catch(function(err) {
+      console.warn('json.rocks fetch failed:', err)
+      showSearch(err.message || 'Failed to fetch. Try another URL.')
+    })
+})()
+</script>
+</body>
+</html>

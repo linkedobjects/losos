@@ -18,9 +18,9 @@ User clicks checkbox
 
 | Layer | File | Size (gzip) | Purpose |
 |-------|------|:-----------:|---------|
-| LION | `packages/lion/index.js` | 1.5KB | Load JSON-LD, index by `@id`, fuzzy prop lookup |
-| Store | `lib/store.js` | 1.9KB | Reactive mutations, dirty tracking, debounced PUT, WebSocket live updates |
-| HTML | `lib/html.js` | 2.5KB | Tagged templates → surgical DOM, keyed lists, refs |
+| LION | `lion/index.js` | 1.5KB | Load JSON-LD, index by `@id`, fuzzy prop lookup |
+| Store | `losos/store.js` | 1.9KB | Reactive mutations, dirty tracking, debounced PUT, WebSocket live updates |
+| HTML | `losos/html.js` | 2.5KB | Tagged templates → surgical DOM, keyed lists, refs |
 | **Total** | | **5.9KB** | |
 
 Plus xlogin (~10KB) for auth and the LOSOS shell (~5KB) for pane loading + tab bar.
@@ -92,7 +92,7 @@ Plus xlogin (~10KB) for auth and the LOSOS shell (~5KB) for pane loading + tab b
 <script src="https://unpkg.com/xlogin" data-guest="<64-char-hex-key>"></script>
 
 <div id="losos"></div>
-<script type="module" src="https://linkedobjects.github.io/losos/packages/shell/index.js"></script>
+<script type="module" src="losos/shell.js"></script>
 </body>
 </html>
 ```
@@ -106,8 +106,8 @@ Plus xlogin (~10KB) for auth and the LOSOS shell (~5KB) for pane loading + tab b
 ### 3. Create a pane (`panes/my-pane.js`)
 
 ```js
-import { createStore } from '../lib/store.js'
-import { html, render, onUnmount } from '../lib/html.js'
+import { createStore } from '../losos/store.js'
+import { html, render, onUnmount } from '../losos/html.js'
 
 export default {
   label: 'Tasks',
@@ -237,7 +237,7 @@ Reconnects with exponential backoff (1s → 2s → 4s → ... → 30s max).
 ### `html` Tagged Templates
 
 ```js
-import { html, render, onUnmount } from './lib/html.js'
+import { html, render, onUnmount } from './losos/html.js'
 
 // Render a template into a container
 render(container, html`
@@ -274,7 +274,7 @@ html`${condition ? html`<div>Yes</div>` : null}`
 For efficient list rendering, use `keyed()` instead of `.map()`. It diffs by key — reuses DOM for existing items, creates DOM for new items, removes DOM for deleted items.
 
 ```js
-import { keyed } from '../lib/html.js'
+import { keyed } from '../losos/html.js'
 
 render(container, html`
   ${keyed(issues,
@@ -298,7 +298,7 @@ store.get('https://pod.example/data.jsonld#this')  // any node anywhere
 
 **DOM refs** — for grabbing a rendered element (focus, scroll, measurement):
 ```js
-import { ref } from '../lib/html.js'
+import { ref } from '../losos/html.js'
 
 var inputRef = ref()
 render(container, html`<input ref="${inputRef}" placeholder="Type here..." />`)
@@ -404,7 +404,7 @@ await authFetch(typeIndexUrl, { method: 'PUT', headers: { 'Content-Type': 'appli
 ```
 index.html              # Shell (JSON-LD script + pane scripts + xlogin)
 my-data.jsonld          # Data (separate file, linked via src)
-lib/
+losos/
   store.js              # Reactive store with auto-save + WebSocket
   html.js               # Tagged template DOM engine
 panes/
@@ -419,10 +419,71 @@ panes/
 To build a LOSOS app:
 1. Create a .jsonld data file with @context aliases
 2. Create an index.html that loads the shell + xlogin + your panes
-3. Create panes that import lib/store.js and lib/html.js
+3. Create panes that import losos/store.js and losos/html.js
 4. Use store.set/push/remove — data auto-saves and live-syncs
 5. Use html`` templates — DOM auto-patches on re-render
 6. Deploy to any static host or Solid pod
 ```
 
 6KB of framework. The rest is your app.
+
+
+## What's New in v2
+
+### Shell Boot Options
+
+The shell accepts options for layout and styling:
+
+```js
+import { boot } from './losos/shell.js'
+boot('#app', { maxWidth: '100%', accentColor: '#e63946' })
+```
+
+- `maxWidth` — controls tab bar and content width (default `960px`)
+- `accentColor` — active tab underline color (default `#7c3aed`)
+
+### Raw Data Passed to Panes
+
+The shell passes the parsed JSON-LD as the 4th argument to `pane.render()`:
+
+```js
+render(subject, store, container, rawData) {
+  // rawData is the parsed JSON-LD — no need to JSON.parse(textContent)
+  var data = rawData
+  var store = createStore(data, { url: dataUrl, debounce: 800 })
+}
+```
+
+This eliminates the textContent race condition where panes could see empty data.
+
+### innerHTML in Templates
+
+You can now set innerHTML directly in templates:
+
+```js
+html`<div innerHTML="${markdownHtml}"></div>`
+```
+
+**Warning:** This is an XSS risk with untrusted content. See GOTCHAS.md.
+
+### Smarter List Rendering
+
+`keyed()` lists now skip re-rendering items whose template values haven't changed. In a 50-item list where 1 item changes, only that 1 item re-renders — the other 49 are untouched.
+
+### Built-in Tab Persistence
+
+The shell automatically persists the active tab to localStorage, namespaced by pathname. No MutationObserver boilerplate needed in your app.
+
+### Error Feedback
+
+All failures now emit `console.warn('[losos] ...')` — failed pane loads, data parse errors, render crashes. No more silent blank pages.
+
+## Examples
+
+Five example apps at [losos.org/examples/](https://losos.org/examples/):
+
+- **Music** — iTunes top charts with playable audio previews
+- **Reddit** — subreddit browser with JSONP, image previews, sort
+- **Countries** — 250 countries from REST API, flags, filtering, detail modal
+- **Pokédex** — 151 Pokémon, type filtering, stat bars, cries
+- **GitHub** — live repo browser with file tree and README

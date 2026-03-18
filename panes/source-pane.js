@@ -1,4 +1,4 @@
-import { html, render } from '../lib/html.js'
+import { html, render } from '../losos/html.js'
 
 export default {
   label: 'Source',

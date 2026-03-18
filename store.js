@@ -11,6 +11,7 @@
  */
 
 export function createStore(jsonLd, options) {
+  options = options || {}
   var url = options.url || null
   var doFetch = options.authFetch || fetch
   var debounceMs = options.debounce || 1000

@@ -139,6 +139,11 @@ function setAttr(el, name, value) {
     value.el = el
     return
   }
+  // innerHTML — set as property, not attribute
+  if (name === 'innerHTML') {
+    el.innerHTML = value == null ? '' : value
+    return
+  }
   // Event handlers: onclick, oninput, etc.
   if (name.startsWith('on')) {
     var event = name.slice(2).toLowerCase()
@@ -155,7 +160,13 @@ function setAttr(el, name, value) {
   else if (name === 'style' && typeof value === 'object') {
     Object.assign(el.style, value)
   }
-  else el.setAttribute(name, value)
+  else {
+    try {
+      el.setAttribute(name, value)
+    } catch (err) {
+      console.warn('[losos] setAttribute failed on <' + el.tagName.toLowerCase() + ' ' + name + '="...">. Every ${} in an opening tag must be attr="${value}" — bare interpolations like <div ${expr}> or class="foo ${expr}" are not supported.', err)
+    }
+  }
 }
 
 function replaceContent(part, value) {
@@ -184,24 +195,40 @@ function replaceContent(part, value) {
     items.forEach(function(item) {
       var key = keyFn(item)
       var existing = prevKeyed.get(key)
+      var tpl = templateFn(item)
 
       if (existing) {
-        // Reuse — patch in place
-        var wrap = document.createElement('div')
-        existing.nodes.forEach(function(n) { wrap.appendChild(n) })
-        render(wrap, templateFn(item))
-        var patched = Array.prototype.slice.call(wrap.childNodes)
-        patched.forEach(function(n) { parent.insertBefore(n, after) })
-        newMap.set(key, { nodes: patched })
-        patched.forEach(function(n) { newNodes.push(n) })
+        // Check if template values changed
+        var changed = !existing.values || existing.values.length !== tpl.values.length
+        if (!changed) {
+          for (var vi = 0; vi < tpl.values.length; vi++) {
+            if (tpl.values[vi] !== existing.values[vi]) { changed = true; break }
+          }
+        }
+
+        if (changed) {
+          // Values changed — patch
+          var wrap = document.createElement('div')
+          existing.nodes.forEach(function(n) { wrap.appendChild(n) })
+          render(wrap, tpl)
+          var patched = Array.prototype.slice.call(wrap.childNodes)
+          patched.forEach(function(n) { parent.insertBefore(n, after) })
+          newMap.set(key, { nodes: patched, values: tpl.values })
+          patched.forEach(function(n) { newNodes.push(n) })
+        } else {
+          // Unchanged — just re-insert existing nodes
+          existing.nodes.forEach(function(n) { parent.insertBefore(n, after) })
+          newMap.set(key, existing)
+          existing.nodes.forEach(function(n) { newNodes.push(n) })
+        }
         prevKeyed.delete(key)
       } else {
         // New item — create
         var wrap = document.createElement('div')
-        render(wrap, templateFn(item))
+        render(wrap, tpl)
         var created = Array.prototype.slice.call(wrap.childNodes)
         created.forEach(function(n) { parent.insertBefore(n, after) })
-        newMap.set(key, { nodes: created })
+        newMap.set(key, { nodes: created, values: tpl.values })
         created.forEach(function(n) { newNodes.push(n) })
       }
     })

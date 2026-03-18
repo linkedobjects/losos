@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOSOS Docs</title>
+  <meta name="description" content="Documentation for LOSOS — a 6KB reactive framework for building apps on linked data.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link active" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link" href="/docs/nested-panes.html">Nested Panes</a>
+    <a class="nav-link" href="/docs/json-schema.html">JSON Schema</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>LOSOS Documentation</h1>
+    <p class="intro">A 6KB reactive framework where data lives at URLs, changes auto-save, and other clients update in real time.</p>
+
+    <div class="card-grid">
+      <a class="card" href="/docs/quickstart.html" style="border-color: #1a5276;">
+        <h3>Quick Start &rarr;</h3>
+        <p>One file. 30 seconds. No install. Copy, paste, open browser.</p>
+      </a>
+      <a class="card" href="/docs/getting-started.html">
+        <h3>Getting Started</h3>
+        <p>Build your first app in 5 minutes. Copy three files, create a pane, open in browser.</p>
+      </a>
+      <a class="card" href="/docs/api.html">
+        <h3>API Reference</h3>
+        <p>Every function in store.js, html.js, and shell.js. With examples.</p>
+      </a>
+      <a class="card" href="/docs/gotchas.html">
+        <h3>Gotchas</h3>
+        <p>Common pitfalls and how to avoid them. Read this before your second app.</p>
+      </a>
+      <a class="card" href="/docs/architecture.html">
+        <h3>Architecture</h3>
+        <p>How the pieces fit together. Kernel, shell, drivers, data model.</p>
+      </a>
+      <a class="card" href="/docs/nested-panes.html">
+        <h3>Nested Panes</h3>
+        <p>Render panes inside panes. Data-driven UI composition with resolvePane and registry.</p>
+      </a>
+      <a class="card" href="/docs/json-schema.html">
+        <h3>JSON Schema Forms</h3>
+        <p>Add $schema to your data, get a free edit form. Auto-generated from your schema.</p>
+      </a>
+      <a class="card" href="/examples/">
+        <h3>Examples</h3>
+        <p>5 complete apps — music player, Reddit browser, Pokédex, GitHub browser, countries explorer.</p>
+      </a>
+    </div>
+
+    <hr>
+
+    <h2>The Stack</h2>
+    <table>
+      <tr><th>Module</th><th>Size</th><th>Purpose</th></tr>
+      <tr><td><a href="/losos/html.js">html.js</a></td><td>2.5 KB</td><td>Tagged templates, DOM patching, keyed lists, refs</td></tr>
+      <tr><td><a href="/losos/store.js">store.js</a></td><td>1.9 KB</td><td>Reactive mutations, dirty tracking, debounced PUT, WebSocket</td></tr>
+      <tr><td><a href="/lion/index.js">lion</a></td><td>1.5 KB</td><td>JSON-LD store, index by <code>@id</code>, fuzzy property lookup</td></tr>
+      <tr><td><a href="/losos/shell.js">shell.js</a></td><td>~1 KB</td><td>Pane loader, tab bar, boot options, tab persistence</td></tr>
+    </table>
+
+    <p>No build step. No dependencies. No virtual DOM. Copy the files, write a pane, open in browser.</p>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

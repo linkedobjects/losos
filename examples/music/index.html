@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Music</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #666 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #1ed760 !important; font-weight: 600 !important; }
+    .mu-boot { display: flex; align-items: center; justify-content: center; height: 50vh; color: #666; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+<script type="module" data-pane src="panes/music-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos"><div class="mu-boot">Loading charts...</div></div>
+
+<script>
+(function() {
+  var dataEl = document.getElementById('data')
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "track": "schema:hasPart",
+    "trackTitle": "schema:name",
+    "artist": "schema:author",
+    "artistImg": "schema:image",
+    "album": "schema:isPartOf",
+    "albumCover": "schema:thumbnailUrl",
+    "albumCoverBig": "schema:image",
+    "duration": "schema:duration",
+    "preview": "schema:audio",
+    "rank": "schema:position",
+    "explicit": "schema:isFamilyFriendly",
+    "topArtist": "schema:performer",
+    "artistName": "schema:name",
+    "artistPhoto": "schema:image",
+    "topAlbum": "schema:album",
+    "albumTitle": "schema:name",
+    "albumArt": "schema:image",
+    "albumArtist": "schema:author",
+    "MusicApp": "schema:MusicPlaylist",
+    "Track": "schema:MusicRecording",
+    "Artist": "schema:MusicGroup",
+    "Album": "schema:MusicAlbum"
+  }
+
+  function transform(feed) {
+    var entries = feed.feed && feed.feed.entry || []
+    var tracks = []
+    var artistMap = {}
+    var albumMap = {}
+
+    entries.forEach(function(e, i) {
+      var title = e['im:name'] && e['im:name'].label || ''
+      var artist = e['im:artist'] && e['im:artist'].label || ''
+      var images = e['im:image'] || []
+      var imgSmall = images[1] ? images[1].label : ''
+      var imgBig = images[2] ? images[2].label.replace('170x170', '600x600') : ''
+      var album = e['im:collection'] && e['im:collection']['im:name'] ? e['im:collection']['im:name'].label : ''
+      var category = e.category && e.category.attributes ? e.category.attributes.label : ''
+      var preview = ''
+      var links = e.link || []
+      for (var j = 0; j < links.length; j++) {
+        if (links[j].attributes && links[j].attributes.type && links[j].attributes.type.indexOf('audio') !== -1) {
+          preview = links[j].attributes.href || ''
+          break
+        }
+      }
+      var id = e.id && e.id.attributes ? e.id.attributes['im:id'] : String(i)
+
+      tracks.push({
+        "@id": "#t" + id,
+        "@type": "Track",
+        "trackTitle": title,
+        "artist": artist,
+        "artistImg": '',
+        "album": album,
+        "albumCover": imgSmall,
+        "albumCoverBig": imgBig,
+        "duration": 30,
+        "preview": preview,
+        "rank": i + 1,
+        "explicit": false,
+        "genre": category
+      })
+
+      if (artist && !artistMap[artist]) {
+        artistMap[artist] = {
+          "@id": "#a-" + artist.replace(/\s/g, '-').slice(0, 20),
+          "@type": "Artist",
+          "artistName": artist,
+          "artistPhoto": imgBig
+        }
+      }
+
+      var albumKey = album + '|' + artist
+      if (album && !albumMap[albumKey]) {
+        albumMap[albumKey] = {
+          "@id": "#al-" + id,
+          "@type": "Album",
+          "albumTitle": album,
+          "albumArt": imgBig,
+          "albumArtist": artist
+        }
+      }
+    })
+
+    return {
+      "@context": context,
+      "@id": "#this",
+      "@type": "MusicApp",
+      "title": "Music",
+      "track": tracks,
+      "topArtist": Object.values(artistMap).slice(0, 20),
+      "topAlbum": Object.values(albumMap).slice(0, 20)
+    }
+  }
+
+  function bootShell() {
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = '../../losos/shell.js'
+    document.body.appendChild(s)
+  }
+
+  function boot(jsonLd) {
+    window.__musicData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    bootShell()
+  }
+
+  fetch('https://itunes.apple.com/us/rss/topsongs/limit=50/json')
+    .then(function(r) { return r.json() })
+    .then(function(feed) { boot(transform(feed)) })
+    .catch(function(err) {
+      console.warn('API failed:', err)
+      document.querySelector('.mu-boot').textContent = 'Failed to load. Try refreshing.'
+    })
+})()
+</script>
+</body>
+</html>

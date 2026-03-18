@@ -1,0 +1,80 @@
+* { margin: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: Georgia, 'Times New Roman', serif; background: #fafaf8; color: #2c2c2c; line-height: 1.7; }
+
+.doc-layout { display: flex; min-height: 100vh; }
+.doc-sidebar {
+  width: 240px; flex-shrink: 0; padding: 24px 0 24px 24px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  border-right: 1px solid #e5e3de;
+}
+.doc-main { flex: 1; min-width: 0; max-width: 720px; padding: 40px 48px 80px; }
+
+@media (max-width: 800px) {
+  .doc-layout { flex-direction: column; }
+  .doc-sidebar {
+    width: 100%; height: auto; position: static;
+    border-right: none; border-bottom: 1px solid #e5e3de;
+    padding: 16px 24px; display: flex; gap: 12px; flex-wrap: wrap; overflow-x: auto;
+  }
+  .doc-sidebar .nav-section-title { display: none; }
+  .doc-main { padding: 24px; }
+}
+
+.nav-logo { font-size: 1.4em; font-weight: normal; margin-bottom: 24px; }
+.nav-logo a { color: #2c2c2c; text-decoration: none; }
+.nav-logo .badge { font-family: 'Courier New', monospace; font-size: 10px; color: #999; background: #f0efeb; padding: 2px 6px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+.nav-section-title { font-size: 0.75em; font-weight: bold; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin: 20px 0 6px; }
+.nav-link {
+  display: block; padding: 4px 12px; margin: 1px 0;
+  font-size: 0.9em; color: #666; text-decoration: none;
+  border-radius: 4px; transition: all 0.1s;
+}
+.nav-link:hover { color: #2c2c2c; background: #f0efeb; }
+.nav-link.active { color: #1a5276; background: #e8e4f8; font-weight: bold; }
+@media (max-width: 800px) {
+  .nav-link { display: inline-block; padding: 4px 10px; font-size: 0.85em; }
+  .nav-logo { margin-bottom: 0; }
+}
+
+h1 { font-size: 2em; font-weight: normal; margin-bottom: 0.5rem; letter-spacing: 0.01em; }
+h2 { font-size: 1.4em; font-weight: normal; margin: 2.5rem 0 0.8rem; padding-bottom: 0.4rem; border-bottom: 1px solid #e5e3de; }
+h3 { font-size: 1.1em; font-weight: normal; color: #444; margin: 1.5rem 0 0.5rem; }
+p { margin-bottom: 1rem; color: #444; }
+a { color: #1a5276; }
+ul, ol { margin: 0 0 1rem 1.5rem; color: #444; }
+li { margin-bottom: 0.3rem; }
+strong { font-weight: bold; }
+em { font-style: italic; }
+hr { border: none; border-top: 1px solid #e5e3de; margin: 2.5rem 0; }
+
+code {
+  font-family: 'Courier New', Courier, monospace; font-size: 0.9em;
+  background: #f0efeb; padding: 2px 6px; border-radius: 3px;
+}
+pre {
+  font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6;
+  background: #f0efeb; padding: 20px 24px; border-radius: 6px;
+  overflow-x: auto; margin: 1rem 0 1.5rem;
+}
+pre code { background: none; padding: 0; }
+pre[class*="language-"], code[class*="language-"] { font-family: 'Courier New', Courier, monospace; font-size: 13px; }
+pre[class*="language-"] { background: #f0efeb; border-radius: 6px; padding: 20px 24px; margin: 1rem 0 1.5rem; }
+:not(pre) > code[class*="language-"] { background: #f0efeb; }
+
+table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.95em; }
+th { text-align: left; padding: 8px 12px; font-weight: normal; color: #888; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e3de; }
+td { padding: 8px 12px; border-bottom: 1px solid #f0efeb; color: #444; }
+td:first-child { color: #2c2c2c; }
+
+.intro { font-size: 1.15em; color: #666; font-style: italic; margin-bottom: 2rem; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 1.5rem 0; }
+.card { border: 1px solid #e5e3de; border-radius: 6px; padding: 20px; text-decoration: none; color: inherit; transition: border-color 0.15s; }
+.card:hover { border-color: #1a5276; }
+.card h3 { margin: 0 0 4px; color: #1a5276; }
+.card p { margin: 0; font-size: 0.9em; }
+.tag { display: inline-block; font-family: 'Courier New', monospace; font-size: 11px; color: #888; background: #f0efeb; padding: 2px 8px; border-radius: 3px; }
+.warn { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 4px; margin: 1rem 0; }
+.warn strong { color: #856404; }
+
+footer { padding: 2rem 0; text-align: center; color: #ccc; font-size: 0.85em; border-top: 1px solid #f0efeb; margin-top: 3rem; }

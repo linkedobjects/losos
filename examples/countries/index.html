@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Countries</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafafa; color: #111; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #999 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #2563eb !important; font-weight: 600 !important; }
+    .cx-boot { display: flex; align-items: center; justify-content: center; height: 50vh; color: #999; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+<script type="module" data-pane src="panes/countries-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos"><div class="cx-boot">Loading countries...</div></div>
+
+<script>
+(function() {
+  var dataEl = document.getElementById('data')
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "country": "schema:hasPart",
+    "name": "schema:name",
+    "official": "schema:alternateName",
+    "cca3": "schema:identifier",
+    "flag": "schema:image",
+    "flagEmoji": "schema:character",
+    "population": "schema:value",
+    "region": "schema:genre",
+    "subregion": "schema:keywords",
+    "capital": "schema:addressLocality",
+    "languages": "schema:inLanguage",
+    "currencies": "schema:priceCurrency",
+    "area": "schema:size",
+    "borders": "schema:description",
+    "timezones": "schema:temporalCoverage",
+    "latlng": "schema:geo",
+    "independent": "schema:isPartOf",
+    "unMember": "schema:memberOf",
+    "tld": "schema:url",
+    "Atlas": "schema:WebSite",
+    "Country": "schema:Country"
+  }
+
+  function transform(c) {
+    var langs = c.languages ? Object.values(c.languages).join(', ') : ''
+    var currs = c.currencies ? Object.values(c.currencies).map(function(v) { return v.name + ' (' + v.symbol + ')' }).join(', ') : ''
+    var capital = c.capital ? c.capital.join(', ') : ''
+    var borders = c.borders ? c.borders.join(', ') : ''
+    var timezones = c.timezones ? c.timezones.join(', ') : ''
+    var tld = c.tld ? c.tld.join(', ') : ''
+
+    return {
+      "@id": "#" + c.cca3,
+      "@type": "Country",
+      "name": c.name.common,
+      "official": c.name.official,
+      "cca3": c.cca3,
+      "flag": c.flags ? c.flags.svg : '',
+      "flagEmoji": c.flag || '',
+      "population": c.population || 0,
+      "region": c.region || '',
+      "subregion": c.subregion || '',
+      "capital": capital,
+      "languages": langs,
+      "currencies": currs,
+      "area": c.area || 0,
+      "borders": borders,
+      "timezones": timezones,
+      "latlng": c.latlng ? c.latlng.join(', ') : '',
+      "independent": c.independent === true,
+      "unMember": c.unMember === true,
+      "tld": tld
+    }
+  }
+
+  function bootShell() {
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = '../../losos/shell.js'
+    document.body.appendChild(s)
+  }
+
+  function boot(jsonLd) {
+    window.__countriesData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    bootShell()
+  }
+
+  // API requires max 10 fields per request, so split into 2 and merge
+  var url1 = 'https://restcountries.com/v3.1/all?fields=name,cca3,flags,flag,population,region,subregion,capital,languages,currencies'
+  var url2 = 'https://restcountries.com/v3.1/all?fields=cca3,area,borders,timezones,latlng,independent,unMember,tld'
+
+  Promise.all([
+    fetch(url1).then(function(r) { return r.json() }),
+    fetch(url2).then(function(r) { return r.json() })
+  ]).then(function(results) {
+    var main = results[0]
+    var extra = results[1]
+    // Index extra by cca3
+    var extraMap = {}
+    extra.forEach(function(e) { extraMap[e.cca3] = e })
+    // Merge
+    var countries = main.map(function(c) {
+      var e = extraMap[c.cca3] || {}
+      c.area = e.area; c.borders = e.borders; c.timezones = e.timezones
+      c.latlng = e.latlng; c.independent = e.independent; c.unMember = e.unMember; c.tld = e.tld
+      return c
+    })
+    var list = countries.map(transform)
+    list.sort(function(a, b) { return (b.population || 0) - (a.population || 0) })
+    boot({
+      "@context": context,
+      "@id": "#this",
+      "@type": "Atlas",
+      "title": "Countries",
+      "country": list
+    })
+  }).catch(function(err) {
+    console.warn('API failed:', err)
+    document.querySelector('.cx-boot').textContent = 'Failed to load. Try refreshing.'
+  })
+})()
+</script>
+</body>
+</html>

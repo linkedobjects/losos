@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON Schema Forms — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link" href="/docs/nested-panes.html">Nested Panes</a>
+    <a class="nav-link" href="/docs/json-schema.html">JSON Schema</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>JSON Schema Forms</h1>
+    <p class="intro">Add <code>$schema</code> to your data. Get a free edit form.</p>
+
+    <h2>How it works</h2>
+    <p>Add a <code>$schema</code> property to your JSON-LD data pointing to a JSON Schema file:</p>
+
+<pre><code class="language-json">{
+  "@context": { "title": "http://purl.org/dc/terms/title" },
+  "@id": "#this",
+  "@type": "Tracker",
+  "$schema": "my-schema.json",
+  "title": "My Tasks"
+}</code></pre>
+
+    <p>Include the schema pane in your HTML:</p>
+
+<pre><code class="language-html">&lt;script type="module" data-pane src="panes/schema-pane.js"&gt;&lt;/script&gt;</code></pre>
+
+    <p>That's it. An "Edit" tab appears with auto-generated form fields.</p>
+
+    <h2>What gets generated</h2>
+
+    <table>
+      <tr><th>Schema type</th><th>Form element</th></tr>
+      <tr><td><code>string</code></td><td>Text input</td></tr>
+      <tr><td><code>string</code> with long <code>maxLength</code></td><td>Textarea</td></tr>
+      <tr><td><code>number</code> / <code>integer</code></td><td>Number input with min/max</td></tr>
+      <tr><td><code>boolean</code></td><td>Checkbox</td></tr>
+      <tr><td><code>enum</code></td><td>Dropdown select</td></tr>
+      <tr><td><code>array</code> of objects</td><td>Repeatable fieldset with add/remove</td></tr>
+    </table>
+
+    <p>Properties starting with <code>@</code> or <code>$</code> are hidden from the form.</p>
+
+    <h2>Validation</h2>
+    <p>Fields are validated as you type:</p>
+    <ul>
+      <li><code>required</code> &mdash; shows red asterisk, error on empty</li>
+      <li><code>minLength</code> / <code>maxLength</code> &mdash; character count validation</li>
+      <li><code>minimum</code> / <code>maximum</code> &mdash; number range validation</li>
+      <li><code>pattern</code> &mdash; regex validation</li>
+    </ul>
+    <p>Errors show inline under the field. The store still saves &mdash; validation is advisory, not blocking.</p>
+
+    <h2>Example schema</h2>
+
+<pre><code class="language-json">{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "My App",
+  "description": "Edit your app data",
+  "type": "object",
+  "required": ["title"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The name of your app"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "archived"],
+      "description": "Current status"
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Priority level"
+    },
+    "published": {
+      "type": "boolean",
+      "description": "Whether this is public"
+    },
+    "items": {
+      "type": "array",
+      "title": "Items",
+      "description": "List of items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "@id": { "type": "string" },
+          "@type": { "const": "Item" },
+          "name": { "type": "string", "description": "Item name" },
+          "done": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}</code></pre>
+
+    <h2>$ref support</h2>
+    <p>The schema pane resolves <code>$ref</code> pointers to <code>$defs</code> and <code>definitions</code>:</p>
+
+<pre><code class="language-json">{
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "done"] }
+      }
+    }
+  }
+}</code></pre>
+
+    <h2>Schema URL resolution</h2>
+    <p>The <code>$schema</code> URL is resolved relative to the data file, not the page. So if your data is at <code>data/tasks.jsonld</code> with <code>"$schema": "tasks-schema.json"</code>, the pane fetches <code>data/tasks-schema.json</code>.</p>
+
+    <h2>Completely optional</h2>
+    <p>The schema pane is opt-in at two levels:</p>
+    <ul>
+      <li><strong>App level</strong> &mdash; only loads if you include <code>&lt;script data-pane src="panes/schema-pane.js"&gt;</code></li>
+      <li><strong>Data level</strong> &mdash; only shows a tab if the data has <code>$schema</code></li>
+    </ul>
+    <p>No <code>$schema</code> in the data? No tab. No schema pane in the HTML? No effect. Zero impact on apps that don't use it.</p>
+
+    <h2>Live demo</h2>
+    <p>See it in action: <a href="/todo/">losos.org/todo/</a> &mdash; click the "Edit" tab. The form is generated from <a href="/todo-schema.json">todo-schema.json</a>.</p>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

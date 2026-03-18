@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Real-time & Notifications — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link active" href="/docs/realtime.html">Real-time</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>Real-time &amp; Notifications</h1>
+    <p class="intro">How changes propagate — from a button click on one device to a DOM update on another.</p>
+
+    <h2>The full cycle</h2>
+<pre><code>Alice clicks "complete"
+  → store.set(task, 'status', 'COMPLETED')
+  → onChange fires → Alice's UI updates instantly
+  → debounce timer starts (800ms)
+  → PUT to https://pod.example/tasks.jsonld
+  → server responds with Updates-Via: wss://pod.example/ws
+  → store connects WebSocket, sends: sub https://pod.example/tasks.jsonld
+
+Meanwhile, Bob has the same URL open:
+  → Bob's store already subscribed to the same WebSocket
+  → server broadcasts: pub https://pod.example/tasks.jsonld
+  → Bob's store calls reload()
+  → reload() fetches fresh data, re-indexes, calls onChange
+  → Bob's UI re-renders — task shows as completed</code></pre>
+
+    <p>Zero configuration. The store discovers WebSocket support from the server's response headers. If the server doesn't support it, everything still works — you just don't get live sync.</p>
+
+    <h2>Local notifications (onChange)</h2>
+    <p>Every <code>store.set()</code>, <code>store.push()</code>, <code>store.remove()</code>, <code>store.unset()</code>, and <code>store.reorder()</code> triggers all <code>onChange</code> listeners synchronously:</p>
+
+<pre><code class="language-js">var store = createStore(data, { url: dataUrl, debounce: 800 })
+
+// Subscribe — returns an unsubscribe function
+var unsub = store.onChange(function() {
+  renderApp()  // re-render the UI
+})
+
+// Every mutation triggers the callback
+store.set(task, 'title', 'New title')  // → renderApp() fires
+store.push(root, 'item', newItem)      // → renderApp() fires
+
+// Unsubscribe when done
+unsub()</code></pre>
+
+    <p>The notification is synchronous — <code>renderApp()</code> runs inside <code>store.set()</code>, before <code>set()</code> returns. This means the UI is always in sync with the data. It also means you don't need to call <code>renderApp()</code> after mutations — it already ran.</p>
+
+    <h2>Persistence (debounced PUT)</h2>
+    <p>After a mutation, the store starts a debounce timer. If no more mutations happen within the debounce window, it PUTs the entire JSON-LD document to the URL:</p>
+
+<pre><code class="language-js">var store = createStore(data, {
+  url: 'https://pod.example/tasks.jsonld',
+  authFetch: window.xlogin.authFetch,  // authenticated fetch
+  debounce: 800                         // ms before saving
+})</code></pre>
+
+    <p>The timeline:</p>
+    <ol>
+      <li><code>store.set()</code> at t=0 — marks dirty, starts 800ms timer</li>
+      <li><code>store.set()</code> at t=200 — resets timer to 800ms from now</li>
+      <li><code>store.set()</code> at t=500 — resets timer again</li>
+      <li>t=1300 — no more mutations, timer fires, PUT request sent</li>
+    </ol>
+    <p>This batches rapid changes (like typing) into a single save. If the save fails, the store stays dirty and retries on the next mutation.</p>
+
+    <h2>WebSocket discovery</h2>
+    <p>The store doesn't need a WebSocket URL configured. It discovers it automatically:</p>
+
+<pre><code>1. store.save() sends PUT to https://pod.example/tasks.jsonld
+2. Server responds with header:
+     Updates-Via: wss://pod.example/ws
+3. Store connects to wss://pod.example/ws
+4. Store sends: sub https://pod.example/tasks.jsonld
+5. Server acknowledges subscription</code></pre>
+
+    <p>This follows the <a href="https://solidproject.org/TR/protocol#websocket">Solid Protocol WebSocket specification</a>. Any server that sends the <code>Updates-Via</code> header enables live sync automatically.</p>
+
+    <h2>WebSocket reconnection</h2>
+    <p>If the WebSocket disconnects, the store reconnects with exponential backoff:</p>
+
+<pre><code>Disconnect → wait 1s → reconnect
+Disconnect → wait 2s → reconnect
+Disconnect → wait 4s → reconnect
+Disconnect → wait 8s → reconnect
+...
+Disconnect → wait 30s → reconnect (max)</code></pre>
+
+    <p>On successful reconnect, the delay resets to 1s. This handles network interruptions, server restarts, and laptop lid close/open gracefully.</p>
+
+    <h2>Remote notifications (pub/sub)</h2>
+    <p>When another client saves to the same URL, the server broadcasts a <code>pub</code> message to all subscribers:</p>
+
+<pre><code>Server → all connected clients: pub https://pod.example/tasks.jsonld
+
+Each client's store:
+  → checks: am I currently dirty? (unsaved local changes)
+  → if dirty: ignore (don't overwrite local work)
+  → if clean: reload() → fetch fresh data → re-index → onChange → re-render</code></pre>
+
+    <p>The dirty check prevents a conflict: if you're in the middle of editing and someone else saves, your local changes won't be overwritten. Your next save will PUT your version.</p>
+
+    <div class="warn"><strong>Note:</strong> This is last-write-wins, not CRDT merge. For true conflict resolution, use <code>store-crdt.js</code> which merges concurrent edits.</div>
+
+    <h2>CRDT sync (store-crdt.js)</h2>
+    <p>For applications that need concurrent editing without conflicts, LOSOS includes a CRDT store variant:</p>
+
+<pre><code class="language-js">import { createStore } from './losos/store-crdt.js'
+
+var store = createStore(data, { debounce: 500 })
+
+// Listen for local operations
+store.onOp(function(op) {
+  // Send op to other clients (via WebSocket, WebRTC, etc.)
+  ws.send(JSON.stringify(op))
+})
+
+// Apply operations from other clients
+ws.onmessage = function(e) {
+  store.applyRemote(JSON.parse(e.data))
+  // → onChange fires → UI updates
+}</code></pre>
+
+    <p>Operations are commutative — they can arrive in any order and produce the same result. No central server required for merge logic.</p>
+
+    <h2>Without a server</h2>
+    <p>If you create a store without a URL, everything still works locally:</p>
+
+<pre><code class="language-js">var store = createStore(data, { debounce: 500 })
+// store.set() → onChange fires → UI updates
+// No PUT, no WebSocket, no network
+// Data lives in memory only</code></pre>
+
+    <p>This is how the landing page demo and the example apps work — reactive UI with zero server infrastructure. Add a URL when you're ready to persist.</p>
+
+    <hr>
+
+    <h2>Summary</h2>
+    <table>
+      <tr><th>Mechanism</th><th>Trigger</th><th>Latency</th></tr>
+      <tr><td>onChange (local)</td><td><code>store.set()</code></td><td>Synchronous (0ms)</td></tr>
+      <tr><td>PUT (persist)</td><td>Debounce timer</td><td>800ms default</td></tr>
+      <tr><td>WebSocket pub (remote)</td><td>Server broadcast after PUT</td><td>~50-200ms</td></tr>
+      <tr><td>reload (remote render)</td><td>WebSocket pub received</td><td>~100-300ms</td></tr>
+      <tr><td>Reconnect</td><td>WebSocket disconnect</td><td>1s–30s (exponential)</td></tr>
+    </table>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

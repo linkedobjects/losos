@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOSOS Examples</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body { font-family: Georgia, 'Times New Roman', serif; background: #fafaf8; color: #2c2c2c; line-height: 1.7; }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    header { padding: 3rem 0 2rem; border-bottom: 1px solid #e5e3de; margin-bottom: 2.5rem; }
+    header h1 { font-size: 2em; font-weight: normal; margin-bottom: 0.3rem; }
+    header p { color: #666; font-style: italic; }
+    a { color: #1a5276; }
+    .example { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #f0efeb; }
+    .example:last-child { border-bottom: none; }
+    .example h2 { font-size: 1.3em; font-weight: normal; margin-bottom: 0.3rem; }
+    .example h2 a { text-decoration: none; }
+    .example h2 a:hover { text-decoration: underline; }
+    .example p { color: #666; font-size: 0.95em; margin-bottom: 0.5rem; }
+    .tag { display: inline-block; font-family: 'Courier New', monospace; font-size: 11px; color: #888; background: #f0efeb; padding: 2px 8px; border-radius: 3px; }
+    footer { padding: 2rem 0; text-align: center; color: #ccc; font-size: 0.85em; border-top: 1px solid #f0efeb; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>LOSOS Examples</h1>
+    <p>Five apps built on linked data — each demonstrates a different pattern.</p>
+  </header>
+
+  <div class="example">
+    <h2><a href="music/">Music Charts</a></h2>
+    <p>iTunes top 50 with playable 30-second previews. Tracks, artists, albums. Functional audio player.</p>
+    <span class="tag">iTunes RSS</span> <span class="tag">audio playback</span> <span class="tag">partial DOM updates</span>
+  </div>
+
+  <div class="example">
+    <h2><a href="reddit/">Reddit Browser</a></h2>
+    <p>Browse subreddits with posts, scores, image previews, and sort options. Type a subreddit name to navigate.</p>
+    <span class="tag">JSONP</span> <span class="tag">1 request</span> <span class="tag">on-demand navigation</span>
+  </div>
+
+  <div class="example">
+    <h2><a href="countries/">Countries Explorer</a></h2>
+    <p>250 countries with flags, population, languages, currencies. Filter by region, sort by population/name/area.</p>
+    <span class="tag">REST API</span> <span class="tag">2 requests</span> <span class="tag">search + filter + sort</span>
+  </div>
+
+  <div class="example">
+    <h2><a href="pokedex/">Pokédex</a></h2>
+    <p>All 151 Gen 1 Pokémon from PokéAPI. Type filtering, stat bars, abilities, playable cries.</p>
+    <span class="tag">batch fetch</span> <span class="tag">151 requests</span> <span class="tag">detail modal</span>
+  </div>
+
+  <div class="example">
+    <h2><a href="ghub/">GitHub Browser</a></h2>
+    <p>Browse any GitHub user's repos with live API data. File tree and README load on demand.</p>
+    <span class="tag">GitHub API</span> <span class="tag">boot options</span> <span class="tag">?user=torvalds</span>
+  </div>
+
+    <div class="example">
+    <h2><a href="dashboard/">Team Dashboard</a></h2>
+    <p>Nested panes in action. A dashboard composed of PersonCard, TaskList, and NoteCard panes — each resolved by @type.</p>
+    <span class="tag">nested panes</span> <span class="tag">resolvePane</span> <span class="tag">static data</span>
+  </div>
+
+  <footer>
+    <a href="/">← LOSOS Home</a> · 6KB · no build step
+  </footer>
+</div>
+</body>
+</html>

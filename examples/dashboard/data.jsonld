@@ -1,0 +1,41 @@
+{
+  "@context": {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "person": "schema:member",
+    "task": "schema:hasPart",
+    "note": "schema:comment",
+    "name": "schema:name",
+    "role": "schema:jobTitle",
+    "status": "schema:description",
+    "avatar": "schema:image",
+    "taskTitle": "schema:name",
+    "assignee": "schema:author",
+    "done": "schema:status",
+    "text": "schema:text",
+    "author": "schema:author",
+    "Dashboard": "schema:Organization",
+    "Person": "schema:Person",
+    "Task": "schema:Action",
+    "Note": "schema:Comment"
+  },
+  "@id": "#this",
+  "@type": "Dashboard",
+  "title": "Team Dashboard",
+  "person": [
+    { "@id": "#alice", "@type": "Person", "name": "Alice Chen", "role": "Lead Engineer", "status": "online", "avatar": "AC" },
+    { "@id": "#bob", "@type": "Person", "name": "Bob Martinez", "role": "Designer", "status": "away", "avatar": "BM" },
+    { "@id": "#sarah", "@type": "Person", "name": "Sarah Kim", "role": "Product Manager", "status": "online", "avatar": "SK" }
+  ],
+  "task": [
+    { "@id": "#t1", "@type": "Task", "taskTitle": "Ship v0.0.2 release", "assignee": "Alice", "done": true },
+    { "@id": "#t2", "@type": "Task", "taskTitle": "Write API documentation", "assignee": "Bob", "done": false },
+    { "@id": "#t3", "@type": "Task", "taskTitle": "Review schema pane PR", "assignee": "Sarah", "done": false },
+    { "@id": "#t4", "@type": "Task", "taskTitle": "Deploy examples to production", "assignee": "Alice", "done": true },
+    { "@id": "#t5", "@type": "Task", "taskTitle": "Design nested panes demo", "assignee": "Bob", "done": false }
+  ],
+  "note": [
+    { "@id": "#n1", "@type": "Note", "text": "Sprint ends Friday. Focus on docs and examples. Schema pane is the wow factor for the demo.", "author": "Sarah" }
+  ]
+}

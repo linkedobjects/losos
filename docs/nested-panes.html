@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nested Panes — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link active" href="/docs/nested-panes.html">Nested Panes</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>Nested Panes</h1>
+    <p class="intro">Render panes inside panes. A dashboard that contains a PersonCard, a TaskList, and a Chart &mdash; each driven by the data's @type.</p>
+
+    <h2>The problem</h2>
+    <p>A pane is a full-screen view. But real apps have nested data &mdash; a Project contains People, a Person has Tasks, Tasks have Comments. You want each piece to render itself using the right pane, wherever it appears.</p>
+
+    <h2>resolvePane()</h2>
+    <p>The shell exports <code>resolvePane</code> &mdash; give it a node, it finds the right pane and renders it:</p>
+
+<pre><code class="language-js">import { resolvePane } from '../losos/shell.js'
+
+// Inside a parent pane's render function:
+var personNode = store.get('#person1')
+var div = document.createElement('div')
+container.appendChild(div)
+await resolvePane(personNode, lionStore, div, rawData)</code></pre>
+
+    <p><code>resolvePane</code> checks three sources in order:</p>
+
+    <h2>1. Local panes</h2>
+    <p>Panes loaded via <code>&lt;script data-pane&gt;</code> tags in your HTML. The same <code>canHandle</code> check the shell uses for tabs:</p>
+
+<pre><code class="language-html">&lt;script type="module" data-pane src="panes/person-pane.js"&gt;&lt;/script&gt;
+&lt;script type="module" data-pane src="panes/task-pane.js"&gt;&lt;/script&gt;</code></pre>
+
+    <p>If any local pane's <code>canHandle</code> returns true for the node, it renders. This is the fastest path &mdash; no network requests.</p>
+
+    <h2>2. ui:view on the node</h2>
+    <p>The data itself declares how to render it. Add a <code>ui:view</code> property pointing to a pane URL:</p>
+
+<pre><code class="language-json">{
+  "@id": "#person1",
+  "@type": "Person",
+  "name": "Alice",
+  "ui:view": "https://example.com/panes/person-card.js"
+}</code></pre>
+
+    <p>The shell dynamically imports the pane from the URL, caches it, and renders. This means data can travel with its own UI &mdash; a JSON-LD document can specify exactly how it should be displayed, anywhere.</p>
+
+    <p>This follows the <a href="https://www.w3.org/ns/ui">W3C UI vocabulary</a> pattern used by the Solid OS project.</p>
+
+    <h2>3. Registry</h2>
+    <p>A type-to-pane mapping. LOSOS ships a default registry:</p>
+
+<pre><code class="language-js">// losos/registry.js
+export default {
+  'wf:Tracker': '../panes/todo-pane.js',
+  'ical:Vtodo': '../panes/todo-pane.js'
+}</code></pre>
+
+    <p>Extend it in your app:</p>
+
+<pre><code class="language-js">import { registry } from './losos/shell.js'
+
+registry['schema:Person'] = './panes/person-pane.js'
+registry['schema:Event'] = './panes/event-pane.js'</code></pre>
+
+    <p>When <code>resolvePane</code> encounters a node with <code>@type: "schema:Person"</code>, and no local pane handles it and no <code>ui:view</code> is set, it checks the registry, dynamically imports the pane, caches it, and renders.</p>
+
+    <h2>Lookup order</h2>
+    <table>
+      <tr><th>Priority</th><th>Source</th><th>When to use</th></tr>
+      <tr><td>1st</td><td>Local panes</td><td>Panes bundled with your app</td></tr>
+      <tr><td>2nd</td><td><code>ui:view</code> on node</td><td>Data that travels with its own UI</td></tr>
+      <tr><td>3rd</td><td>Registry</td><td>Default views for common types</td></tr>
+    </table>
+
+    <p>First match wins. If nothing matches, <code>resolvePane</code> logs a warning and returns <code>null</code>.</p>
+
+    <h2>Example: Dashboard with nested panes</h2>
+
+<pre><code class="language-js">export default {
+  label: 'Dashboard',
+  icon: '\uD83D\uDCCA',
+
+  canHandle(subject, store) {
+    return store.type(store.get(subject.value))?.includes('Dashboard')
+  },
+
+  async render(subject, lionStore, container, rawData) {
+    var { resolvePane } = await import('../losos/shell.js')
+    var { html, render } = await import('../losos/html.js')
+
+    var data = rawData
+    var root = data  // or use a reactive store
+
+    // Render the dashboard layout
+    render(container, html`
+      &lt;h1&gt;${data.title}&lt;/h1&gt;
+      &lt;div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;"&gt;
+        &lt;div id="person-slot"&gt;&lt;/div&gt;
+        &lt;div id="tasks-slot"&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    `)
+
+    // Resolve nested panes for each slot
+    var personNode = lionStore.get('#person1')
+    if (personNode) {
+      await resolvePane(personNode, lionStore,
+        container.querySelector('#person-slot'), rawData)
+    }
+
+    var tasksNode = lionStore.get('#tasks')
+    if (tasksNode) {
+      await resolvePane(tasksNode, lionStore,
+        container.querySelector('#tasks-slot'), rawData)
+    }
+  }
+}</code></pre>
+
+    <p>The dashboard doesn't know how to render a Person or a Task list. It creates slots and lets <code>resolvePane</code> find the right pane for each <code>@type</code>.</p>
+
+    <h2>The linked data advantage</h2>
+    <p>In React, you'd import <code>PersonCard</code> and <code>TaskList</code> by name. If the data changes shape, you rewrite the imports. In LOSOS, the data's <code>@type</code> drives which pane renders. Change the type, the UI follows automatically. Add a new type with a <code>ui:view</code>, and it renders itself &mdash; no code changes in the parent.</p>
+
+    <p>This is the core idea behind Tim Berners-Lee's <a href="https://www.w3.org/DesignIssues/UI.html">data-driven UI vision</a> &mdash; the data knows how to present itself.</p>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

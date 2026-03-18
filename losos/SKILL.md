@@ -1,44 +1,89 @@
-# Build LOSOS Apps
+# LOSOS — LLM Skill Guide
 
-> LOSOS is a 6KB reactive framework for linked data apps. No build step. No dependencies. No VDOM. Data lives at URLs, auto-saves via PUT, and syncs in real time via WebSocket.
+> A 6KB reactive framework for building apps on linked data. No build step. No dependencies.
+> Full docs at https://losos.org/docs/
 
-## Quick Start
+## Quick Start — Single File App
 
-Three files make an app:
+```html
+<!DOCTYPE html>
+<html>
+<head><title>My App</title></head>
+<body>
+
+<script type="application/ld+json">
+{
+  "@context": { "title": "http://purl.org/dc/terms/title",
+                "item": "http://schema.org/hasPart",
+                "name": "http://schema.org/name" },
+  "@id": "#this",
+  "@type": "List",
+  "title": "My List",
+  "item": [
+    { "@id": "#1", "name": "First item" },
+    { "@id": "#2", "name": "Second item" }
+  ]
+}
+</script>
+
+<div id="app"></div>
+
+<script type="module">
+import { createStore } from 'https://losos.org/losos/store.js'
+import { html, render, keyed } from 'https://losos.org/losos/html.js'
+
+var data = JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent)
+var store = createStore(data, { debounce: 500 })
+// Changes are in-memory only. To auto-save via PUT, add: url: 'data.jsonld'
+var root = store.get('#this')
+
+function renderApp() {
+  var items = store.propAll(root, 'item')
+  render(document.getElementById('app'), html`
+    <h1>${data.title}</h1>
+    <input placeholder="Add..." onkeydown="${function(e) {
+      if (e.key !== 'Enter' || !e.target.value.trim()) return
+      store.push(root, 'item', { '@id': '#' + Date.now(), 'name': e.target.value.trim() })
+      e.target.value = ''
+    }}" />
+    ${keyed(items, function(i) { return i['@id'] }, function(i) {
+      return html`<div>${i.name} <button onclick="${function() {
+        store.remove(root, 'item', function(x) { return x === i })
+      }}">x</button></div>`
+    })}
+  `)
+}
+
+store.onChange(renderApp)
+renderApp()
+</script>
+</body>
+</html>
+```
+
+Serve with `npx serve .` or `python3 -m http.server`. No install needed.
+
+> **Note:** The Quick Start above imports directly from losos.org (no shell). For full apps with panes and tabs, you also need `lion/index.js` (the shell depends on it). See File Structure below.
+
+## File Structure (Full App)
 
 ```
 my-app/
-  index.html          # Shell — loads data + panes
-  data.jsonld          # Data — JSON-LD at a URL
-  panes/
-    my-pane.js         # Pane — renders + edits the data
+  losos/             ← framework (copy from losos.org/losos/)
+    html.js          ← templates, DOM patching, keyed lists, refs
+    store.js         ← reactive store, auto-save, WebSocket sync
+    shell.js         ← pane loader, tab bar, boot options
+    registry.js      ← @type → pane URL mappings
+  lion/              ← JSON-LD store (copy from losos.org/lion/)
+    index.js
+  panes/             ← your app code
+    my-pane.js
+    source-pane.js
+  data.jsonld        ← your data
+  index.html
 ```
 
-### 1. Data (`data.jsonld`)
-
-```json
-{
-  "@context": {
-    "dct": "http://purl.org/dc/terms/",
-    "title": "dct:title",
-    "description": "dct:description",
-    "created": "dct:created"
-  },
-  "@id": "#this",
-  "@type": "MyApp",
-  "title": "My App",
-  "created": "2026-03-16T00:00:00Z"
-}
-```
-
-Rules:
-- **Flat context aliases** — write `title` not `dct:title` in data
-- **No `@graph`** — single root node with `@id: "#this"`
-- **`@type`** can use context aliases — `"MyApp"` with `"MyApp": "schema:SoftwareApplication"` in context
-- **Standard vocabularies** — use iCalendar (`ical:`), Dublin Core (`dct:`), Schema.org (`schema:`) where possible
-- **Every node gets an `@id`** — use `#` + timestamp for generated IDs: `"@id": "#Item1710252000000"`
-
-### 2. Shell (`index.html`)
+## Shell (index.html)
 
 ```html
 <!DOCTYPE html>
@@ -47,60 +92,62 @@ Rules:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My App</title>
-  <style>
-    * { margin: 0; box-sizing: border-box; }
-    body { font-family: Inter, system-ui, sans-serif; background: #faf9f7; }
-    #losos { max-width: 780px; margin: 48px auto; padding: 0 20px; }
-    button.pane-tab { color: #64748b !important; }
-    button.pane-tab[aria-selected="true"] { color: #6366f1 !important; font-weight: 600 !important; }
-  </style>
 </head>
 <body>
-
-<script type="application/ld+json" src="data.jsonld"></script>
-<script type="module" data-pane src="panes/my-pane.js"></script>
-<script src="https://unpkg.com/xlogin"></script>
-
-<div id="losos"></div>
-<script type="module" src="https://linkedobjects.github.io/losos/packages/shell/index.js"></script>
+  <script type="application/ld+json" src="data.jsonld"></script>
+  <script type="module" data-pane src="panes/my-pane.js"></script>
+  <script type="module" data-pane src="panes/source-pane.js"></script>
+  <div id="losos"></div>
+  <script type="module" src="losos/shell.js"></script>
 </body>
 </html>
 ```
 
-### 3. Pane (`panes/my-pane.js`)
+Shell auto-boots when `#losos` exists. For custom options:
 
 ```js
-import { createStore } from '../lib/store.js'
-import { html, render, onUnmount, keyed } from '../lib/html.js'
+import { boot } from './losos/shell.js'
+boot('#app', { maxWidth: '100%', accentColor: '#e63946' })
+```
+
+Shell provides:
+- Built-in tab persistence (namespaced by pathname, no MutationObserver needed)
+- Error feedback via `console.warn('[losos] ...')` on all failures
+- Raw JSON-LD passed as 4th argument to `pane.render()`
+
+## Pane API
+
+```js
+import { createStore } from '../losos/store.js'
+import { html, render, onUnmount, keyed, ref } from '../losos/html.js'
 
 export default {
-  label: 'My App',
+  label: 'My Pane',
   icon: '📋',
 
   canHandle(subject, store) {
     var node = store.get(subject.value)
     var type = store.type(node)
-    return type && type.includes('MyApp')
+    return type && type.includes('MyType')
   },
 
-  render(subject, lionStore, container) {
-    var dataEl = document.querySelector('script[type="application/ld+json"]')
-    var data = JSON.parse(dataEl.textContent)
-    var dataUrl = new URL(dataEl.getAttribute('src'), location.href).href
-
+  render(subject, lionStore, container, rawData) {
+    // rawData = parsed JSON-LD from shell (4th arg, eliminates textContent race)
+    var data = rawData
     var store = createStore(data, {
-      url: dataUrl,
+      url: 'https://pod.example/data.jsonld',  // PUT target (optional)
       authFetch: (window.xlogin && window.xlogin.authFetch) || fetch,
       debounce: 800
     })
     var root = store.get('#this')
 
     function renderApp() {
+      var items = store.propAll(root, 'item')
       render(container, html`
-        <div style="padding: 48px 40px;">
-          <h1>${data['title']}</h1>
-          <!-- your app here -->
-        </div>
+        <h1>${data['title']}</h1>
+        ${keyed(items, function(i) { return i['@id'] }, function(i) {
+          return html`<div>${i['name']}</div>`
+        })}
       `)
     }
 
@@ -111,350 +158,222 @@ export default {
 }
 ```
 
-## Framework APIs
+Key rules:
+- **Use `rawData` (4th arg)** — don't parse `dataEl.textContent` (race condition)
+- **Append to `container`** — don't return elements
+- **Tabs handled by shell** — panes don't build tab bars
+- **`store.set()` triggers `onChange` synchronously** — don't call `renderApp()` after mutations
 
-### Store (`lib/store.js`)
+## Store Methods
 
-```js
-import { createStore } from '../lib/store.js'
-
-var store = createStore(data, {
-  url: 'https://pod.example/data.jsonld',    // PUT target
-  authFetch: window.xlogin.authFetch,         // authenticated fetch
-  debounce: 800                               // ms before auto-save
-})
-```
-
-| Method | Does |
-|--------|------|
-| `store.get(id)` | Node by `@id` |
-| `store.prop(node, key)` | Read property (fuzzy match) |
-| `store.propAll(node, key)` | Read as array |
+| Method | Description |
+|--------|-------------|
+| `store.get(id)` | Get node by `@id` |
+| `store.prop(node, key)` | Read property (fuzzy key match) |
+| `store.propAll(node, key)` | Read array property (always returns array) |
 | `store.type(node)` | Get `@type` |
-| `store.set(node, key, value)` | Write → auto-save |
-| `store.unset(node, key)` | Delete property → auto-save |
-| `store.push(node, key, value)` | Append to array → auto-save |
-| `store.remove(node, key, fn)` | Filter array → auto-save |
-| `store.reorder(node, key, from, to)` | Move in array → auto-save |
+| `store.set(node, key, value)` | Write → dirty → onChange → auto-save |
+| `store.unset(node, key)` | Delete property |
+| `store.push(node, key, value)` | Array append |
+| `store.remove(node, key, fn)` | Array filter by predicate |
+| `store.reorder(node, key, from, to)` | Array move |
 | `store.save()` | Force immediate PUT |
-| `store.reload()` | Re-fetch from URL |
-| `store.onChange(fn)` | Subscribe (returns unsubscribe fn) |
+| `store.reload()` | Re-fetch from URL, notify listeners |
+| `store.onChange(fn)` | Subscribe (returns unsubscribe function) |
 | `store.toJSON()` | Serialize to JSON-LD string |
+| `store.data` | The raw JSON-LD root |
 
-Every `set/push/remove/reorder`:
-1. Mutates data in memory
-2. Marks dirty
-3. Schedules debounced PUT
-4. Notifies all `onChange` listeners
-5. On first save, discovers WebSocket via `Updates-Via` header and subscribes
+## Template API
 
-### HTML Templates (`lib/html.js`)
+| Function | Description |
+|----------|-------------|
+| `html`\`...\`` | Tagged template literal → template object |
+| `render(container, template)` | First call builds DOM, subsequent calls patch only changed values |
+| `keyed(items, keyFn, templateFn)` | Efficient list rendering — skips unchanged items |
+| `ref()` | Grab DOM element after render: `var r = ref(); html`\`<input ref="${r}" />\``; r.el.focus()` |
+| `onUnmount(container, fn)` | Cleanup on tab switch (unsubscribe, pause audio, etc.) |
+| `innerHTML` attribute | `html`\`<div innerHTML="${htmlString}"></div>\`` — XSS risk with untrusted content |
 
-```js
-import { html, render, onUnmount, ref, keyed } from '../lib/html.js'
-```
+**⚠️ CRITICAL RULE: Every `${}` in an opening tag must be the ENTIRE attribute value.**
 
-**Basic rendering:**
-```js
-render(container, html`<h1>${title}</h1>`)
-// Call again — only the ${} holes patch, rest of DOM untouched
-```
-
-**Event handlers:**
-```js
-html`<button onclick="${function(e) { ... }}">Click</button>`
-```
-
-**Conditional:**
-```js
-html`${condition ? html`<div>Yes</div>` : null}`
-```
-
-**Lists (unkeyed):**
-```js
-html`${items.map(function(i) { return html`<div>${i.name}</div>` })}`
-```
-
-**Lists (keyed — efficient, reuses DOM):**
-```js
-html`${keyed(items,
-  function(i) { return i['@id'] },
-  function(i) { return html`<div>${i.name}</div>` }
-)}`
-```
-
-**Refs (grab DOM element after render):**
-```js
-var inputRef = ref()
-render(container, html`<input ref="${inputRef}" />`)
-inputRef.el.focus()
-```
-
-**Lifecycle:**
-```js
-onUnmount(container, function() {
-  // cleanup — runs when container is removed from DOM (tab switch)
-})
-```
-
-## Component Model
-
-A component is a function that returns `html`. A pane is an object with `canHandle` + `render`.
+No mixing static text with `${}` inside any attribute. The whole value must be one expression.
 
 ```js
-// Component — used by a parent
-function TaskRow(issue, store) {
-  var done = issue['status'] === 'COMPLETED'
-  return html`
-    <div style="display: flex; gap: 12px; padding: 8px 0;">
-      <button onclick="${function() {
-        store.set(issue, 'status', done ? 'NEEDS-ACTION' : 'COMPLETED')
-      }}">${done ? '✓' : '○'}</button>
-      <span>${issue['summary']}</span>
-    </div>
-  `
-}
+// ❌ BAD — mixed string + interpolation in attribute
+html`<div class="card ${active ? 'active' : ''}">`
+html`<div style="background: ${color}">`
+html`<div style="--color: ${color}">`
+html`<input ${checked ? 'checked' : ''} onchange="${fn}">`
 
-// Use it
-render(container, html`
-  <h1>Tasks</h1>
-  ${keyed(issues, function(i) { return i['@id'] }, function(i) {
-    return TaskRow(i, store)
-  })}
-`)
+// ✅ GOOD — entire attribute value is one ${}
+html`<div class="${active ? 'card active' : 'card'}">`
+html`<div style="${'background:' + color}">`
+html`<div style="${'--color:' + color}">`
+html`<input checked="${checked}" onchange="${fn}">`
 ```
+
+Breaking this rule corrupts attribute parsing silently. The browser may throw "parameter 2 is not of type 'Object'" — that means you have a mixed interpolation somewhere.
+
+**Refs:** `ref().el` is `null` until `render()` runs. Use optional chaining: `myRef.el?.focus()`
+
+## Nested Panes (resolvePane)
+
+Render panes inside panes — data-driven composition:
 
 ```js
-// Pane — registered with the shell via <script data-pane>
-export default {
-  label: 'Tasks',
-  icon: '✅',
-  canHandle(subject, store) {
-    return store.type(store.get(subject.value))?.includes('Tracker')
-  },
-  render(subject, store, container) {
-    // uses components internally
-  }
-}
+import { resolvePane } from '../losos/shell.js'
+
+// Inside a parent pane:
+var childNode = lionStore.get('#person1')
+var div = document.createElement('div')
+container.appendChild(div)
+await resolvePane(childNode, lionStore, div, rawData)
 ```
 
-A component can be promoted to a pane by adding `canHandle` + `label` + `icon`. A pane uses components internally. One pattern, two uses.
+Checks three sources in order:
+1. **Local panes** — `canHandle` match from `<script data-pane>` tags
+2. **`ui:view` on node** — data declares its own view URL
+3. **Registry** — `@type` → pane URL mapping from `losos/registry.js`
 
-## Styling
-
-All styling via `<style>` tags or inline `style` attributes. No external stylesheets. No CSS-in-JS.
-
+Extend the registry:
 ```js
-render(container, html`
-  <style>
-    .my-row { display: flex; gap: 12px; padding: 8px 0; }
-    .my-row:hover .my-actions { opacity: 1; }
-    .my-actions { opacity: 0; transition: opacity 0.2s; }
-  </style>
-  <div class="my-row">
-    <span>${item.name}</span>
-    <div class="my-actions">
-      <button onclick="${onDelete}">×</button>
-    </div>
-  </div>
-`)
+import { registry } from './losos/shell.js'
+registry['schema:Person'] = './panes/person-pane.js'
 ```
 
-The shell tab bar needs `!important` overrides:
-```css
-button.pane-tab { color: #64748b !important; }
-button.pane-tab[aria-selected="true"] { color: #6366f1 !important; }
-```
-
-## Data Patterns
-
-### Todo / Task Tracker
-
-Use iCalendar `Vtodo` vocabulary:
+## Data Format (JSON-LD)
 
 ```json
 {
   "@context": {
-    "ical": "http://www.w3.org/2002/12/cal/ical#",
-    "wf": "http://www.w3.org/2005/01/wf/flow#",
     "dct": "http://purl.org/dc/terms/",
-    "summary": "ical:summary",
-    "description": "ical:description",
-    "status": "ical:status",
-    "categories": "ical:categories",
-    "due": "ical:due",
-    "priority": "ical:priority",
-    "created": "dct:created",
-    "modified": "ical:lastModified",
+    "schema": "http://schema.org/",
     "title": "dct:title",
-    "initialState": "wf:initialState",
-    "issue": "wf:issue",
-    "Tracker": "wf:Tracker",
-    "Vtodo": "ical:Vtodo"
+    "item": "schema:hasPart",
+    "name": "schema:name"
   },
   "@id": "#this",
-  "@type": "Tracker",
-  "title": "My Tasks",
-  "initialState": "NEEDS-ACTION",
-  "issue": [
-    {
-      "@id": "#Iss1710252000000",
-      "@type": "Vtodo",
-      "summary": "Build something",
-      "status": "NEEDS-ACTION",
-      "created": "2026-03-16T00:00:00Z"
-    }
+  "@type": "MyType",
+  "title": "My App",
+  "item": [
+    { "@id": "#1", "@type": "Item", "name": "First" }
   ]
 }
 ```
 
-Status values (RFC 5545): `NEEDS-ACTION`, `IN-PROCESS`, `COMPLETED`, `CANCELLED`
+Rules:
+- Every node has `@id` — a global, dereferenceable URI
+- **Root node must use `@id: "#this"`** — the shell's `findSubject()` looks for `#this` first. Other `@id` values on the root will cause "No data found"
+- `@type` determines which pane renders it
+- `@context` maps short keys to standard URIs
+- No `@graph` — single root node
+- `ui:view` on a node declares its pane URL
+- **Type expansion**: LION expands prefixed types (`schema:Person` → `http://schema.org/Person`) but NOT context aliases (`Person` stays as `Person` if mapped via `"Person": "schema:Person"`). In `canHandle`, check for the short name used in the data, not the expanded URI
+- **`createStore(data)` works without options** — no need to pass `{}` for read-only usage
 
-### Generic List
+## API-Driven Apps
 
-```json
-{
-  "@context": {
-    "schema": "https://schema.org/",
-    "name": "schema:name",
-    "item": "schema:itemListElement",
-    "ItemList": "schema:ItemList"
-  },
-  "@id": "#this",
-  "@type": "ItemList",
-  "name": "My List",
-  "item": []
-}
-```
-
-### Custom Type
-
-```json
-{
-  "@context": {
-    "schema": "https://schema.org/",
-    "name": "schema:name",
-    "text": "schema:text",
-    "created": "schema:dateCreated",
-    "Note": "schema:TextDigitalDocument"
-  },
-  "@id": "#this",
-  "@type": "Note",
-  "name": "My Note",
-  "text": "Hello world",
-  "created": "2026-03-16T00:00:00Z"
-}
-```
-
-## Authentication
-
-xlogin handles Solid OIDC + Nostr + guest login:
+For apps that fetch from external APIs, bootstrap data before loading the shell:
 
 ```html
-<!-- Basic -->
-<script src="https://unpkg.com/xlogin"></script>
+<script id="data" type="application/ld+json"></script>
+<script type="module" data-pane src="panes/my-pane.js"></script>
+<div id="losos"></div>
 
-<!-- With guest login (shared Nostr key) -->
+<script>
+fetch('https://api.example.com/data')
+  .then(function(r) { return r.json() })
+  .then(function(apiData) {
+    var jsonLd = {
+      "@context": { ... },
+      "@id": "#this",
+      "@type": "MyType",
+      ...transformApiData(apiData)
+    }
+    window.__myData = jsonLd
+    document.getElementById('data').textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = 'losos/shell.js'
+    document.body.appendChild(s)
+  })
+</script>
+```
+
+In the pane, read `window.__myData` or `rawData` (4th arg).
+
+## Persistence & Live Sync
+
+```js
+var store = createStore(data, {
+  url: 'https://pod.example/data.jsonld',
+  authFetch: window.xlogin.authFetch,
+  debounce: 800
+})
+```
+
+- `store.set()` → debounced PUT to URL
+- Server responds with `Updates-Via: wss://...` header → WebSocket auto-connects
+- Other clients get `pub` message → `store.reload()` → `onChange` → re-render
+- Reconnects with exponential backoff (1s → 30s max)
+- If store is dirty (unsaved local changes), remote updates are ignored
+
+## xlogin Integration
+
+```html
 <script src="https://unpkg.com/xlogin" data-guest="<64-char-hex-privkey>"></script>
 ```
 
 After login:
 ```js
 window.xlogin.type       // "nostr", "solid", or "guest"
-window.xlogin.id         // WebID or pubkey
-window.xlogin.authFetch  // authenticated fetch — pass to createStore
+window.xlogin.id         // pubkey or webId
+window.xlogin.authFetch  // authenticated fetch (NIP-98 or DPoP)
 ```
 
-Listen for login:
-```js
-document.addEventListener('xlogin', function(e) {
-  console.log(e.detail.type, e.detail.id)
-})
-```
+Events: `document.addEventListener('xlogin', fn)` / `document.addEventListener('xlogout', fn)`
 
-## CRDT Store (Optional)
+## High-Frequency Updates
 
-For multiplayer / offline apps, swap `store.js` for `store-crdt.js`:
+Don't call `renderApp()` in a fast timer. Patch DOM directly:
 
 ```js
-import { createStore } from '../lib/store-crdt.js'
-// Same API — but operations sync between clients
-// and data is cached in localStorage for offline
-```
+// BAD — re-renders everything 4x/sec
+setInterval(function() { renderApp() }, 250)
 
-Extra methods:
-- `store.onOp(fn)` — subscribe to operations
-- `store.applyRemote(op)` — apply operation from another peer
-- `store.peerId` — unique ID for this client
-
-```js
-// Wire two stores together
-aliceStore.onOp(function(op) { bobStore.applyRemote(op) })
-bobStore.onOp(function(op) { aliceStore.applyRemote(op) })
-```
-
-## Solid Pod Integration
-
-### Type Index Discovery
-
-After Solid login, discover user's data:
-
-```js
-var webId = window.xlogin.id
-var profile = await authFetch(webId, {
-  headers: { 'Accept': 'application/ld+json' }
-}).then(r => r.json())
-// Find solid:publicTypeIndex → fetch → find solid:forClass → solid:instance
-```
-
-### Register Data in Type Index
-
-Read-modify-write (not PATCH):
-
-```js
-var tiData = await authFetch(typeIndexUrl, {
-  headers: { 'Accept': 'application/ld+json' }
-}).then(r => r.json())
-
-tiData['schema:itemListElement'].push({
-  '@id': '#reg-myapp',
-  '@type': 'solid:TypeRegistration',
-  'solid:forClass': { '@id': 'http://www.w3.org/2005/01/wf/flow#Tracker' },
-  'solid:instance': { '@id': dataUrl + '#this' }
-})
-
-await authFetch(typeIndexUrl, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/ld+json' },
-  body: JSON.stringify(tiData, null, 2)
-})
+// GOOD — patches only what changed
+setInterval(function() {
+  var el = container.querySelector('.progress-fill')
+  if (el) el.style.width = percent + '%'
+}, 250)
 ```
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Using `@graph` | Keep flat — single root node, nest data as properties |
-| Prefixed property keys in data | Use context aliases — `summary` not `ical:summary` |
-| `innerHTML` in templates | Use `html` tagged templates or `document.createElement` |
-| Saving on every change | Let the store debounce — just call `store.set()` |
-| Manual `fetch` for save | Pass `authFetch` to `createStore` — it handles PUT |
-| Full re-render without keyed | Use `keyed()` for lists to reuse DOM nodes |
-| Forgetting `onUnmount` | Always clean up `onChange` subscriptions |
-| `setTimeout(render, 0)` missing | First render must be deferred to let shell attach container |
-| Calling `renderAll()` after store mutation | Use `store.onChange(renderAll)` — it auto-triggers on `set/push/remove` |
+| Parsing `dataEl.textContent` in pane | Use `rawData` (4th arg to render) |
+| Calling `renderApp()` after `store.set()` | `onChange` already fired — renders twice |
+| `innerHTML` with user input | XSS risk — sanitize first or use template values |
+| `</script>` in JSON-LD data | Corrupts DOM — strip or escape |
+| Loading shell from remote CDN | Copy `losos/shell.js` locally |
+| MutationObserver for tab persistence | Shell handles this built-in |
+| Re-rendering in a fast timer | Use `querySelector` + direct DOM writes |
+| Importing from `../lib/` | Use `../losos/` — lib is deprecated |
+| Bare interpolation in tag: `<input ${expr}>` | Breaks attr parsing — every `${}` in a tag must be `attr="${value}"` |
+| `${cond ? 'checked' : ''}` for boolean attrs | Use `checked="${cond}"` — `false` removes the attribute |
+| `class="foo ${expr}"` mixed string + interpolation | Use `class="${expr ? 'foo bar' : 'foo'}"` — the whole attribute value must be one `${}` |
+| Root `@id` is not `#this` | Shell expects `#this` — use `"@id": "#this"` on the root node |
+| Quick Start store has no url — changes lost on reload | Add `url: 'data.jsonld'` to `createStore` options to enable auto-save via PUT |
 
-## Stack Sizes
+## Links
 
-| File | Raw | Gzipped |
-|------|----:|--------:|
-| LION (shell) | 4.0 KB | 1.5 KB |
-| lib/store.js | 6.0 KB | 1.9 KB |
-| lib/html.js | 7.5 KB | 2.5 KB |
-| **Total** | **17.5 KB** | **5.9 KB** |
-| store-crdt.js (optional) | 9.5 KB | 2.9 KB |
-
-## Example Apps
-
-- **Todo tracker** — [melvin.me/public/todo/](https://melvin.me/public/todo/) — full app with sidebar, multiple trackers, detail modal, pod integration
-- **Landing page** — [melvin.me/public/todo/losos/](https://melvin.me/public/todo/losos/) — live interactive demo with CRDT multiplayer
+- **Docs:** https://losos.org/docs/
+- **Examples:** https://losos.org/examples/ (music, reddit, countries, pokedex, github)
+- **Quick Start:** https://losos.org/docs/quickstart.html
+- **API Reference:** https://losos.org/docs/api.html
+- **Gotchas:** https://losos.org/docs/gotchas.html
+- **Architecture:** https://losos.org/docs/architecture.html
+- **Nested Panes:** https://losos.org/docs/nested-panes.html
+- **Real-time:** https://losos.org/docs/realtime.html

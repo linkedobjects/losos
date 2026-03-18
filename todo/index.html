@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Todo — LOSOS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #faf9f7;
+      min-height: 100vh;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    #losos {
+      max-width: 780px;
+      margin: 48px auto;
+      padding: 0 20px;
+    }
+    button.pane-tab {
+      color: #64748b !important;
+      font-weight: 500 !important;
+    }
+    button.pane-tab[aria-selected="true"] {
+      color: #6366f1 !important;
+      font-weight: 600 !important;
+    }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json" src="../todo-data.jsonld"></script>
+<script>
+(function() {
+  var p = new URLSearchParams(window.location.search).get('tracker')
+  if (p) document.getElementById('data').setAttribute('src', p)
+})()
+</script>
+
+<script type="module" data-pane src="../panes/todo-pane.js"></script>
+<script type="module" data-pane src="../panes/schema-pane.js"></script>
+<script type="module" data-pane src="../panes/source-pane.js"></script>
+
+<div id="losos"></div>
+<script type="module" src="../losos/shell.js"></script>
+</body>
+</html>

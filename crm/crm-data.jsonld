@@ -1,0 +1,106 @@
+{
+  "@context": {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title",
+    "contact": "schema:member",
+    "company": "schema:organization",
+    "deal": "schema:hasPart",
+    "activity": "schema:event",
+    "name": "schema:name",
+    "email": "schema:email",
+    "phone": "schema:telephone",
+    "role": "schema:jobTitle",
+    "avatar": "schema:image",
+    "notes": "schema:description",
+    "companyRef": "schema:worksFor",
+    "website": "schema:url",
+    "industry": "schema:category",
+    "size": "schema:size",
+    "dealTitle": "schema:name",
+    "value": "schema:price",
+    "stage": "schema:status",
+    "closeDate": "schema:endDate",
+    "contactRef": "schema:agent",
+    "companyDealRef": "schema:seller",
+    "actType": "schema:additionalType",
+    "actNote": "schema:description",
+    "actTime": "dct:created",
+    "actContact": "schema:agent",
+    "CRM": "schema:Organization",
+    "Contact": "schema:Person",
+    "Company": "schema:Corporation",
+    "Deal": "schema:TradeAction",
+    "Activity": "schema:Event"
+  },
+  "@id": "#this",
+  "@type": "CRM",
+  "title": "Acme CRM",
+  "$schema": "crm-schema.json",
+  "contact": [
+    {
+      "@id": "#c1", "@type": "Contact",
+      "name": "Sarah Chen", "email": "sarah@lumina.dev", "phone": "+1 555-0101",
+      "role": "CTO", "companyRef": "Lumina Labs", "avatar": "SC",
+      "notes": "Met at WebConf 2026. Interested in real-time collaboration features."
+    },
+    {
+      "@id": "#c2", "@type": "Contact",
+      "name": "Marcus Rivera", "email": "marcus@dataflow.io", "phone": "+1 555-0102",
+      "role": "VP Engineering", "companyRef": "DataFlow", "avatar": "MR",
+      "notes": "Referred by Sarah. Evaluating us vs Retool."
+    },
+    {
+      "@id": "#c3", "@type": "Contact",
+      "name": "Emily Park", "email": "emily@greenfield.co", "phone": "+1 555-0103",
+      "role": "Head of Product", "companyRef": "Greenfield", "avatar": "EP",
+      "notes": "Early adopter. Wants API access for custom integrations."
+    },
+    {
+      "@id": "#c4", "@type": "Contact",
+      "name": "James Okafor", "email": "james@nextstep.ai", "phone": "+1 555-0104",
+      "role": "CEO", "companyRef": "NextStep AI", "avatar": "JO",
+      "notes": "Series A startup. Fast decision maker. Budget approved."
+    },
+    {
+      "@id": "#c5", "@type": "Contact",
+      "name": "Lisa Huang", "email": "lisa@brightpath.com", "phone": "+1 555-0105",
+      "role": "Director of Operations", "companyRef": "BrightPath", "avatar": "LH",
+      "notes": "Large team, needs onboarding support. Potential enterprise deal."
+    },
+    {
+      "@id": "#c6", "@type": "Contact",
+      "name": "Tom Kowalski", "email": "tom@steelworks.io", "phone": "+1 555-0106",
+      "role": "Lead Developer", "companyRef": "Steelworks", "avatar": "TK",
+      "notes": "Technical buyer. Wants self-hosted option."
+    }
+  ],
+  "company": [
+    { "@id": "#co1", "@type": "Company", "name": "Lumina Labs", "industry": "Developer Tools", "website": "https://lumina.dev", "size": "50-200" },
+    { "@id": "#co2", "@type": "Company", "name": "DataFlow", "industry": "Data Infrastructure", "website": "https://dataflow.io", "size": "200-1000" },
+    { "@id": "#co3", "@type": "Company", "name": "Greenfield", "industry": "AgTech", "website": "https://greenfield.co", "size": "10-50" },
+    { "@id": "#co4", "@type": "Company", "name": "NextStep AI", "industry": "AI/ML", "website": "https://nextstep.ai", "size": "10-50" },
+    { "@id": "#co5", "@type": "Company", "name": "BrightPath", "industry": "Education", "website": "https://brightpath.com", "size": "1000+" },
+    { "@id": "#co6", "@type": "Company", "name": "Steelworks", "industry": "Manufacturing", "website": "https://steelworks.io", "size": "200-1000" }
+  ],
+  "deal": [
+    { "@id": "#d1", "@type": "Deal", "dealTitle": "Lumina Labs - Enterprise", "value": 48000, "stage": "negotiation", "contactRef": "Sarah Chen", "companyDealRef": "Lumina Labs", "closeDate": "2026-04-15" },
+    { "@id": "#d2", "@type": "Deal", "dealTitle": "DataFlow - Team Plan", "value": 12000, "stage": "proposal", "contactRef": "Marcus Rivera", "companyDealRef": "DataFlow", "closeDate": "2026-05-01" },
+    { "@id": "#d3", "@type": "Deal", "dealTitle": "Greenfield - Starter", "value": 3600, "stage": "won", "contactRef": "Emily Park", "companyDealRef": "Greenfield", "closeDate": "2026-03-01" },
+    { "@id": "#d4", "@type": "Deal", "dealTitle": "NextStep AI - Pro", "value": 24000, "stage": "qualification", "contactRef": "James Okafor", "companyDealRef": "NextStep AI", "closeDate": "2026-06-01" },
+    { "@id": "#d5", "@type": "Deal", "dealTitle": "BrightPath - Enterprise", "value": 96000, "stage": "proposal", "contactRef": "Lisa Huang", "companyDealRef": "BrightPath", "closeDate": "2026-05-15" },
+    { "@id": "#d6", "@type": "Deal", "dealTitle": "Steelworks - Self-Hosted", "value": 18000, "stage": "discovery", "contactRef": "Tom Kowalski", "companyDealRef": "Steelworks", "closeDate": "2026-07-01" },
+    { "@id": "#d7", "@type": "Deal", "dealTitle": "Lumina Labs - Add-on", "value": 6000, "stage": "won", "contactRef": "Sarah Chen", "companyDealRef": "Lumina Labs", "closeDate": "2026-02-15" },
+    { "@id": "#d8", "@type": "Deal", "dealTitle": "DataFlow - Expansion", "value": 36000, "stage": "lost", "contactRef": "Marcus Rivera", "companyDealRef": "DataFlow", "closeDate": "2026-03-10" }
+  ],
+  "activity": [
+    { "@id": "#a1", "@type": "Activity", "actType": "call", "actNote": "Intro call. Sarah excited about linked data approach. Wants demo next week.", "actTime": "2026-03-15T10:00:00Z", "actContact": "Sarah Chen" },
+    { "@id": "#a2", "@type": "Activity", "actType": "email", "actNote": "Sent proposal deck with pricing tiers. Follow up Thursday.", "actTime": "2026-03-14T14:00:00Z", "actContact": "Marcus Rivera" },
+    { "@id": "#a3", "@type": "Activity", "actType": "meeting", "actNote": "Product demo with Emily's team. They loved the schema forms. Moving to paid.", "actTime": "2026-03-12T15:00:00Z", "actContact": "Emily Park" },
+    { "@id": "#a4", "@type": "Activity", "actType": "call", "actNote": "James confirmed budget. Wants to start pilot next month.", "actTime": "2026-03-16T09:00:00Z", "actContact": "James Okafor" },
+    { "@id": "#a5", "@type": "Activity", "actType": "email", "actNote": "Lisa requesting enterprise SLA and SSO documentation.", "actTime": "2026-03-16T11:00:00Z", "actContact": "Lisa Huang" },
+    { "@id": "#a6", "@type": "Activity", "actType": "meeting", "actNote": "Technical deep-dive with Tom. Discussed self-hosted deployment on their K8s cluster.", "actTime": "2026-03-13T13:00:00Z", "actContact": "Tom Kowalski" },
+    { "@id": "#a7", "@type": "Activity", "actType": "note", "actNote": "Sarah mentioned they're also looking at our CRDT sync for their mobile app.", "actTime": "2026-03-16T16:00:00Z", "actContact": "Sarah Chen" },
+    { "@id": "#a8", "@type": "Activity", "actType": "call", "actNote": "Marcus passed on expansion. Budget went to competing project. Keep warm for Q3.", "actTime": "2026-03-10T10:00:00Z", "actContact": "Marcus Rivera" }
+  ]
+}

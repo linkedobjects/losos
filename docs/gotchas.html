@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gotchas — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link active" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link" href="/docs/nested-panes.html">Nested Panes</a>
+    <a class="nav-link" href="/docs/json-schema.html">JSON Schema</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>Gotchas</h1>
+    <p class="intro">Things we learned building 14 apps. Read this before you hit the same walls.</p>
+
+    <h2>1. Don't re-render for high-frequency updates</h2>
+    <p>If you have a timer, audio progress bar, or animation that updates 4+ times per second, don't call <code>renderApp()</code>. It rebuilds the entire DOM &mdash; images flicker, network requests spike.</p>
+    <p>Patch only the elements that change:</p>
+<pre><code class="language-js">// BAD — re-renders 50 rows to update one progress bar
+setInterval(function() {
+  progress = audio.currentTime / audio.duration
+  renderApp()
+}, 250)
+
+// GOOD — patches 2 elements directly
+setInterval(function() {
+  var fill = container.querySelector('.progress-fill')
+  var time = container.querySelector('.time-elapsed')
+  if (fill) fill.style.width = (audio.currentTime / audio.duration * 100) + '%'
+  if (time) time.textContent = formatTime(audio.currentTime)
+}, 250)</code></pre>
+
+    <h2>2. Use the rawData argument</h2>
+    <p>The shell passes parsed JSON-LD as the 4th argument to <code>render</code>. Use it instead of parsing <code>textContent</code>:</p>
+<pre><code class="language-js">// OLD — race condition risk
+render(subject, store, container) {
+  var data
+  try { data = JSON.parse(dataEl.textContent) } catch (e) { return }
+}
+
+// NEW — reliable
+render(subject, store, container, rawData) {
+  var data = rawData
+}</code></pre>
+
+    <h2>3. innerHTML is an XSS risk</h2>
+    <p><code>html`&lt;div innerHTML="${value}"&gt;&lt;/div&gt;`</code> sets innerHTML directly. Safe with trusted content. Dangerous with user input.</p>
+<pre><code class="language-js">// SAFE — values go through textContent, no HTML parsing
+html`&lt;div&gt;${userInput}&lt;/div&gt;`
+
+// DANGEROUS — parses HTML, can execute scripts
+html`&lt;div innerHTML="${userInput}"&gt;&lt;/div&gt;`
+
+// SAFE — sanitize first
+var clean = userInput.replace(/&lt;[^&gt;]*&gt;/g, '')
+html`&lt;div innerHTML="${clean}"&gt;&lt;/div&gt;`</code></pre>
+
+    <h2>4. No &lt;/script&gt; in JSON-LD data</h2>
+    <p>If your JSON-LD contains the literal string <code>&lt;/script&gt;</code>, the browser's HTML parser will corrupt the DOM when it's written to a script element's textContent. Strip or escape it.</p>
+
+    <h2>5. store.set() triggers onChange synchronously</h2>
+    <p>Don't call <code>renderApp()</code> after <code>store.set()</code> &mdash; it already ran via <code>onChange</code>:</p>
+<pre><code class="language-js">// BAD — renders twice
+store.set(node, 'title', 'New')
+renderApp()
+
+// GOOD — renders once
+store.set(node, 'title', 'New')</code></pre>
+    <p>Exception: multiple <code>store.set()</code> calls in sequence each trigger a render. For bulk updates, call <code>renderApp()</code> manually after the last one.</p>
+
+    <h2>6. Use the local shell</h2>
+    <p>Copy <code>shell.js</code> into your project. Don't load it from a CDN:</p>
+<pre><code class="language-html">&lt;script type="module" src="losos/shell.js"&gt;&lt;/script&gt;</code></pre>
+    <p>The shell provides built-in tab persistence. No MutationObserver needed.</p>
+
+    <h2>7. File structure</h2>
+<pre><code class="language-bash">my-app/
+  losos/           &larr; framework (copy these)
+    html.js
+    store.js
+    shell.js
+  lion/            &larr; JSON-LD store (used by shell)
+    index.js
+  panes/           &larr; your app code
+    my-pane.js
+  data.jsonld
+  index.html</code></pre>
+
+    <h2>8. API apps: bootstrap before shell</h2>
+    <p>For apps that fetch data from an external API, load the shell <em>after</em> the data is ready:</p>
+<pre><code class="language-js">fetch('https://api.example.com/data')
+  .then(function(r) { return r.json() })
+  .then(function(data) {
+    var jsonLd = transformToJsonLd(data)
+    window.__myData = jsonLd
+    document.getElementById('data').textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = 'losos/shell.js'
+    document.body.appendChild(s)
+  })</code></pre>
+
+    <h2>9. Every ${} in a tag must be an attribute value</h2>
+    <p>Bare interpolations inside opening tags break attribute parsing silently:</p>
+<pre><code class="language-html">&lt;!-- BAD — bare interpolation corrupts the tag --&gt;
+&lt;input type="checkbox" ${isDone ? 'checked' : ''}
+  onchange="${fn}" /&gt;
+&lt;!-- onchange gets stringified as text, not bound as event --&gt;
+
+&lt;!-- GOOD — use attribute value form --&gt;
+&lt;input type="checkbox" checked="${isDone}"
+  onchange="${fn}" /&gt;
+&lt;!-- false removes the attribute, true adds it --&gt;</code></pre>
+    <p>The rule: every <code>${}</code> inside an opening tag must be in the form <code>attr="${value}"</code>. LOSOS doesn't support <code>&lt;div ${expr}&gt;</code> spread syntax.</p>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

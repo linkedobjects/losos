@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Reference — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link active" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link" href="/docs/architecture.html">Architecture</a>
+    <a class="nav-link" href="/docs/realtime.html">Real-time</a>
+    <a class="nav-link" href="/docs/nested-panes.html">Nested Panes</a>
+    <a class="nav-link" href="/docs/json-schema.html">JSON Schema</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>API Reference</h1>
+    <p class="intro">Every function in store.js, html.js, and shell.js.</p>
+
+    <h2>store.js</h2>
+
+    <h3>createStore(jsonLd, options)</h3>
+    <p>Create a reactive store from a JSON-LD object.</p>
+<pre><code class="language-js">import { createStore } from './losos/store.js'
+
+var store = createStore(data, {
+  url: 'https://pod.example/data.jsonld',  // PUT target
+  authFetch: window.xlogin.authFetch,       // authenticated fetch
+  debounce: 800                             // ms before auto-save
+})</code></pre>
+
+    <table>
+      <tr><th>Method</th><th>Description</th></tr>
+      <tr><td><code>store.get(id)</code></td><td>Retrieve a node by <code>@id</code></td></tr>
+      <tr><td><code>store.prop(node, key)</code></td><td>Read a property (fuzzy key match)</td></tr>
+      <tr><td><code>store.propAll(node, key)</code></td><td>Read array property (always returns array)</td></tr>
+      <tr><td><code>store.type(node)</code></td><td>Get <code>@type</code></td></tr>
+      <tr><td><code>store.set(node, key, value)</code></td><td>Write &rarr; dirty &rarr; auto-save</td></tr>
+      <tr><td><code>store.unset(node, key)</code></td><td>Delete property &rarr; auto-save</td></tr>
+      <tr><td><code>store.push(node, key, value)</code></td><td>Array append &rarr; auto-save</td></tr>
+      <tr><td><code>store.remove(node, key, fn)</code></td><td>Array filter &rarr; auto-save</td></tr>
+      <tr><td><code>store.reorder(node, key, from, to)</code></td><td>Array move &rarr; auto-save</td></tr>
+      <tr><td><code>store.save()</code></td><td>Force immediate PUT</td></tr>
+      <tr><td><code>store.reload()</code></td><td>Re-fetch from URL, notify listeners</td></tr>
+      <tr><td><code>store.onChange(fn)</code></td><td>Subscribe to changes (returns unsubscribe)</td></tr>
+      <tr><td><code>store.toJSON()</code></td><td>Serialize to JSON-LD string</td></tr>
+      <tr><td><code>store.data</code></td><td>The raw JSON-LD root object</td></tr>
+      <tr><td><code>store.dirty</code></td><td>Whether there are unsaved changes</td></tr>
+    </table>
+
+    <h3>Fuzzy key resolution</h3>
+    <p><code>store.prop(node, 'title')</code> matches <code>node['title']</code>, <code>node['dct:title']</code>, or any key ending in <code>:title</code>, <code>/title</code>, or <code>#title</code>. This lets panes work with both short context aliases and full URIs.</p>
+
+    <hr>
+
+    <h2>html.js</h2>
+
+    <h3>html`...`</h3>
+    <p>Tagged template literal that creates a template object. Use <code>${}</code> for dynamic values:</p>
+<pre><code class="language-js">import { html, render } from './losos/html.js'
+
+render(container, html`
+  &lt;h1&gt;${title}&lt;/h1&gt;
+  &lt;button onclick="${function() { alert('clicked') }}"&gt;Click&lt;/button&gt;
+  ${condition ? html`&lt;p&gt;Shown&lt;/p&gt;` : null}
+  ${items.map(function(i) { return html`&lt;div&gt;${i.name}&lt;/div&gt;` })}
+`)</code></pre>
+
+    <p>Supported value types in <code>${}</code>:</p>
+    <ul>
+      <li>Strings, numbers &rarr; text content</li>
+      <li><code>null</code>, <code>false</code> &rarr; renders nothing</li>
+      <li>Arrays &rarr; renders each item</li>
+      <li>Nested <code>html`...`</code> &rarr; nested template</li>
+      <li>Functions in <code>on*</code> attributes &rarr; event handlers</li>
+    </ul>
+
+    <h3>render(container, template)</h3>
+    <p>First call builds DOM. Subsequent calls with the same template shape patch only the changed <code>${}</code> values.</p>
+
+    <h3>keyed(items, keyFn, templateFn)</h3>
+    <p>Efficient list rendering. Matches items by key, reuses DOM, skips unchanged items:</p>
+<pre><code class="language-js">import { keyed } from './losos/html.js'
+
+html`${keyed(
+  items,
+  function(i) { return i['@id'] },
+  function(i) { return html`&lt;div&gt;${i.name}&lt;/div&gt;` }
+)}`</code></pre>
+    <p>Items whose template values haven't changed are not re-rendered — their DOM nodes are reused as-is.</p>
+
+    <h3>ref()</h3>
+    <p>Grab a DOM element after render:</p>
+<pre><code class="language-js">import { ref } from './losos/html.js'
+
+var inputRef = ref()
+render(el, html`&lt;input ref="${inputRef}" /&gt;`)
+inputRef.el.focus()</code></pre>
+
+    <h3>onUnmount(container, fn)</h3>
+    <p>Call a function when the container is removed from the DOM (e.g., tab switch):</p>
+<pre><code>onUnmount(container, function() {
+  unsub()        // unsubscribe from store
+  audio.pause()  // clean up resources
+})</code></pre>
+
+    <h3>innerHTML attribute</h3>
+    <p>Set innerHTML directly in templates:</p>
+<pre><code class="language-js">html`&lt;div innerHTML="${htmlString}"&gt;&lt;/div&gt;`</code></pre>
+    <div class="warn"><strong>Warning:</strong> XSS risk with untrusted content. See <a href="/docs/gotchas.html">Gotchas</a>.</div>
+
+    <hr>
+
+    <h2>shell.js</h2>
+
+    <h3>boot(el, options)</h3>
+    <p>Boot the shell. Called automatically if a <code>#losos</code> element exists.</p>
+<pre><code class="language-js">import { boot } from './losos/shell.js'
+
+boot('#app', {
+  maxWidth: '100%',       // default: '960px'
+  accentColor: '#e63946'  // default: '#7c3aed'
+})</code></pre>
+    <p>Options:</p>
+    <ul>
+      <li><code>maxWidth</code> &mdash; controls tab bar and content container width</li>
+      <li><code>accentColor</code> &mdash; active tab underline color</li>
+    </ul>
+    <p>The shell provides built-in tab persistence (namespaced by pathname) and passes parsed JSON-LD as the 4th argument to <code>pane.render()</code>.</p>
+
+    <hr>
+
+    <h2>Pane interface</h2>
+<pre><code class="language-js">export default {
+  label: 'My Pane',
+  icon: '📋',
+
+  canHandle(subject, store) {
+    // Return true if this pane should show for the data
+    var node = store.get(subject.value)
+    return store.type(node)?.includes('MyType')
+  },
+
+  render(subject, store, container, rawData) {
+    // subject.value = the @id of the primary node
+    // store = LION store (read-only, for canHandle)
+    // container = DOM element to render into
+    // rawData = parsed JSON-LD (use for createStore)
+  }
+}</code></pre>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>

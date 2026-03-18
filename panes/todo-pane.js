@@ -1,5 +1,5 @@
-import { createStore } from '../lib/store.js'
-import { html, render, onUnmount, keyed } from '../lib/html.js'
+import { createStore } from '../losos/store.js'
+import { html, render, onUnmount, keyed } from '../losos/html.js'
 
 var SOLID = 'http://www.w3.org/ns/solid/terms#'
 var WF = 'http://www.w3.org/2005/01/wf/flow#'

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture — LOSOS Docs</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="doc-layout">
+  <nav class="doc-sidebar">
+    <div class="nav-logo"><a href="/docs/" style="display: flex; align-items: center; gap: 8px;"><img src="/img/logo-32.png" alt="" style="width: 28px; height: 28px;"> LOSOS</a> <span class="badge">6KB</span></div>
+    <div class="nav-section-title">Learn</div>
+    <a class="nav-link" href="/docs/">Overview</a>
+    <a class="nav-link" href="/docs/quickstart.html">Quick Start</a>
+    <a class="nav-link" href="/docs/getting-started.html">Getting Started</a>
+    <a class="nav-link" href="/docs/api.html">API Reference</a>
+    <div class="nav-section-title">Guides</div>
+    <a class="nav-link" href="/docs/gotchas.html">Gotchas</a>
+    <a class="nav-link active" href="/docs/architecture.html">Architecture</a>
+    <div class="nav-section-title">Resources</div>
+    <a class="nav-link" href="/examples/">Examples</a>
+    <a class="nav-link" href="/">Home</a>
+  </nav>
+
+  <main class="doc-main">
+    <h1>Architecture</h1>
+    <p class="intro">How LOSOS works — from data to screen and back.</p>
+
+    <h2>The layers</h2>
+<pre><code>┌─────────────────────────────────┐
+│  Apps (panes)                   │  todo, chat, pokedex...
+├─────────────────────────────────┤
+│  Shell                          │  shell.js — tabs, pane routing
+├─────────────────────────────────┤
+│  Extensions                     │  xlogin (auth), store-crdt (sync)
+├─────────────────────────────────┤
+│  Kernel                         │  store.js + html.js + lion
+│                                 │  reactivity, rendering, data
+├─────────────────────────────────┤
+│  Data layer                     │  JSON-LD at URLs
+│                                 │  HTTP PUT/GET, WebSocket, Solid pods
+└─────────────────────────────────┘</code></pre>
+
+    <p>The <strong>kernel</strong> is what you can't remove &mdash; store, html, lion. Everything else is pluggable. The shell is one possible UI. xlogin is one possible auth driver.</p>
+
+    <h2>The reactive flow</h2>
+<pre><code class="language-js">store.set()  →  dirty tracking  →  debounced PUT  →  WebSocket pub
+                     ↓                                      ↓
+               onChange fires  ←  other clients reload  ←  sub
+                     ↓
+               renderApp()  →  html`` patches DOM</code></pre>
+
+    <ol>
+      <li>You call <code>store.set(node, 'status', 'COMPLETED')</code></li>
+      <li>The store marks the data dirty and starts a debounce timer</li>
+      <li>The store calls all <code>onChange</code> listeners &mdash; your <code>renderApp()</code> runs</li>
+      <li><code>render()</code> compares the new template values to the previous ones and patches only what changed</li>
+      <li>After the debounce, the store PUTs the JSON-LD to the server</li>
+      <li>The server sends a WebSocket <code>pub</code> message to other clients</li>
+      <li>Other clients <code>reload()</code> and re-render</li>
+    </ol>
+
+    <h2>Data model</h2>
+    <p>LOSOS uses <strong>JSON-LD</strong> &mdash; JSON with a <code>@context</code> that maps short keys to standard URIs. It looks like plain JSON but is linked data.</p>
+<pre><code class="language-json">{
+  "@context": {
+    "dct": "http://purl.org/dc/terms/",
+    "title": "dct:title"
+  },
+  "@id": "#this",
+  "@type": "Tracker",
+  "title": "My Tasks"
+}</code></pre>
+
+    <p>Key principles:</p>
+    <ul>
+      <li>Every node has an <code>@id</code> &mdash; a global, dereferenceable URI</li>
+      <li><code>@type</code> determines which pane renders it</li>
+      <li><code>@context</code> maps short keys to full URIs &mdash; no custom formats</li>
+      <li>Data lives at a URL. <code>store.save()</code> PUTs it back. The URL is the API.</li>
+    </ul>
+
+    <h2>The URI is the router</h2>
+    <p>There is no router library. Every JSON-LD node has a URI. Navigate to a URI, the shell loads the data, finds matching panes, renders. <code>@id</code> is the route. <code>@type</code> picks the view.</p>
+
+    <h2>Pane discovery</h2>
+    <p>The shell scans for <code>&lt;script data-pane&gt;</code> tags and loads each module. For each pane, it calls <code>canHandle(subject, store)</code>. Panes that return <code>true</code> get a tab. The first match renders immediately.</p>
+    <p>This means data chooses its view. Add a new <code>@type</code>, add a pane that handles it. No configuration, no routing table.</p>
+
+    <h2>Persistence</h2>
+    <p>The store auto-saves via HTTP PUT. It discovers WebSocket support via the <code>Updates-Via</code> response header on the first save. If present, it connects and subscribes for live updates.</p>
+<pre><code>createStore(data, {
+  url: 'https://pod.example/data.jsonld',
+  authFetch: window.xlogin.authFetch,
+  debounce: 800
+})
+
+// store.set() → waits 800ms → PUT to url
+// PUT response has Updates-Via header → WebSocket connects
+// Other clients get pub → reload() → re-render</code></pre>
+
+    <h2>Why not a virtual DOM?</h2>
+    <p>LOSOS uses tagged template literals. The template strings are the same object reference on every render (JavaScript interns template literals). So <code>render()</code> can check: same strings? Patch only the <code>${}</code> holes. Different strings? Full rebuild.</p>
+    <p>This is faster than a virtual DOM for the size of apps LOSOS targets. No diffing, no reconciliation, no fiber scheduler. Just a <code>for</code> loop comparing values by reference.</p>
+    <p>For lists, <code>keyed()</code> matches items by key and skips items whose template values haven't changed. In a 50-item list where 1 item changes, 49 skip entirely.</p>
+
+    <h2>What LOSOS is not</h2>
+    <ul>
+      <li>Not a general-purpose framework &mdash; it's for apps where data lives at URLs</li>
+      <li>Not a replacement for React/Svelte &mdash; those solve different problems at different scale</li>
+      <li>Not server-rendered &mdash; it's a client-side framework for mutable linked data</li>
+      <li>Not a build tool &mdash; no compilation, no bundling, no tree-shaking. Copy and use.</li>
+    </ul>
+
+    <h2>Future</h2>
+    <ol>
+      <li><strong>Data declares its view</strong> &mdash; a <code>ui:defaultPane</code> triple on <code>@type</code>. The pane URL lives in the data itself.</li>
+      <li><strong>User preferences</strong> &mdash; choose your pane per type. Alice uses kanban, Bob uses list. Same data.</li>
+      <li><strong>Pane registry</strong> &mdash; community-shared panes. One line to add a calendar view, a kanban board, a chart.</li>
+      <li><strong>JSON Schema forms</strong> &mdash; auto-generate edit forms from <code>$schema</code>. Validate on save.</li>
+      <li><strong>Offline</strong> &mdash; service worker queues PUTs when disconnected, replays on reconnect.</li>
+      <li><strong>Conflict resolution</strong> &mdash; ETags and <code>If-Match</code> for safe concurrent editing.</li>
+    </ol>
+
+    <footer>LOSOS &middot; 6KB &middot; <a href="/docs/">Docs</a> &middot; <a href="/">Home</a></footer>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>
