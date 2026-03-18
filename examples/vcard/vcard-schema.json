@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Contact Card",
+  "description": "Edit contact information (vCard/JSON-LD)",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "title": "Full Name",
+      "description": "Display name (vcard:fn)"
+    },
+    "givenName": {
+      "type": "string",
+      "title": "First Name",
+      "description": "Given name (vcard:given-name)"
+    },
+    "familyName": {
+      "type": "string",
+      "title": "Last Name",
+      "description": "Family name (vcard:family-name)"
+    },
+    "photo": {
+      "type": "string",
+      "title": "Photo URL",
+      "description": "Profile picture (vcard:hasPhoto)"
+    },
+    "jobTitle": {
+      "type": "string",
+      "title": "Job Title",
+      "description": "Role or position (vcard:title)"
+    },
+    "organization": {
+      "type": "string",
+      "title": "Organization",
+      "description": "Company or org (vcard:organization-name)"
+    },
+    "email": {
+      "type": "array",
+      "title": "Email Addresses",
+      "description": "Contact emails (vcard:hasEmail)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "@id": { "type": "string" },
+          "type": { "type": "string", "enum": ["Work", "Home", "Other"], "title": "Type" },
+          "value": { "type": "string", "title": "Email" }
+        }
+      }
+    },
+    "phone": {
+      "type": "array",
+      "title": "Phone Numbers",
+      "description": "Contact phones (vcard:hasTelephone)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "@id": { "type": "string" },
+          "type": { "type": "string", "enum": ["Work", "Home", "Cell"], "title": "Type" },
+          "value": { "type": "string", "title": "Number" }
+        }
+      }
+    },
+    "address": {
+      "type": "string",
+      "title": "Address",
+      "maxLength": 500,
+      "description": "Street address (vcard:hasAddress)"
+    },
+    "url": {
+      "type": "string",
+      "title": "Website",
+      "description": "Personal website (vcard:hasURL)"
+    },
+    "birthday": {
+      "type": "string",
+      "title": "Birthday",
+      "description": "Date of birth (vcard:bday)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "maxLength": 2000,
+      "description": "Additional notes (vcard:note)"
+    }
+  }
+}

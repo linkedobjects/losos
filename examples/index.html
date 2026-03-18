@@ -4,22 +4,53 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LOSOS Examples</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
     * { margin: 0; box-sizing: border-box; }
     body { font-family: Georgia, 'Times New Roman', serif; background: #fafaf8; color: #2c2c2c; line-height: 1.7; }
-    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
-    header { padding: 3rem 0 2rem; border-bottom: 1px solid #e5e3de; margin-bottom: 2.5rem; }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+    a { color: #1a5276; }
+
+    header { padding: 3rem 0 2rem; margin-bottom: 2rem; text-align: center; }
     header h1 { font-size: 2em; font-weight: normal; margin-bottom: 0.3rem; }
     header p { color: #666; font-style: italic; }
-    a { color: #1a5276; }
-    .example { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #f0efeb; }
-    .example:last-child { border-bottom: none; }
-    .example h2 { font-size: 1.3em; font-weight: normal; margin-bottom: 0.3rem; }
-    .example h2 a { text-decoration: none; }
-    .example h2 a:hover { text-decoration: underline; }
-    .example p { color: #666; font-size: 0.95em; margin-bottom: 0.5rem; }
-    .tag { display: inline-block; font-family: 'Courier New', monospace; font-size: 11px; color: #888; background: #f0efeb; padding: 2px 8px; border-radius: 3px; }
-    footer { padding: 2rem 0; text-align: center; color: #ccc; font-size: 0.85em; border-top: 1px solid #f0efeb; }
+
+    .section-title {
+      font-family: 'Courier New', monospace; font-size: 0.75em; font-weight: bold;
+      color: #999; letter-spacing: 0.12em; text-transform: uppercase;
+      margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e3de;
+    }
+
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 14px; margin-bottom: 1.5rem;
+    }
+
+    .card {
+      display: block; text-decoration: none; color: inherit;
+      background: #fff; border: 1px solid #e8e8ec; border-radius: 12px;
+      padding: 20px; transition: all 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+      border-color: #d0d0d8;
+    }
+    .card-icon { font-size: 24px; margin-bottom: 10px; }
+    .card-title { font-size: 1.05em; font-weight: normal; color: #1a5276; margin-bottom: 6px; }
+    .card-desc { font-size: 0.82em; color: #888; line-height: 1.5; margin-bottom: 10px; }
+    .card-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tag {
+      font-family: 'Courier New', monospace; font-size: 10px;
+      color: #888; background: #f0efeb; padding: 2px 7px; border-radius: 3px;
+    }
+    .tag-api { background: #e8f4f8; color: #1a5276; }
+    .tag-compat { background: #f3e8ff; color: #7b3f9e; }
+
+    .try-links { font-size: 0.85em; margin-top: 6px; }
+    .try-links a { margin-right: 8px; }
+
+    footer { padding: 2rem 0; text-align: center; color: #ccc; font-size: 0.85em; border-top: 1px solid #f0efeb; margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -29,62 +60,75 @@
     <p>Apps built on linked data — from simple demos to a universal web browser.</p>
   </header>
 
-<div class="example">
-    <h2><a href="music/">Music Charts</a></h2>
-    <p>iTunes top 50 with playable 30-second previews. Tracks, artists, albums. Functional audio player.</p>
-    <span class="tag">iTunes RSS</span> <span class="tag">audio playback</span> <span class="tag">partial DOM updates</span>
+  <div class="section-title">Apps</div>
+  <div class="grid">
+    <a class="card" href="music/">
+      <div class="card-icon">🎵</div>
+      <div class="card-title">Music Charts</div>
+      <div class="card-desc">iTunes top 50 with playable 30-second previews. Functional audio player with track list.</div>
+      <div class="card-tags"><span class="tag tag-api">iTunes RSS</span> <span class="tag">audio</span> <span class="tag">partial updates</span></div>
+    </a>
+    <a class="card" href="/crm/">
+      <div class="card-icon">📊</div>
+      <div class="card-title">CRM</div>
+      <div class="card-desc">Kanban pipeline, contacts, activity timeline. One JSON-LD file, two panes, ~400 lines.</div>
+      <div class="card-tags"><span class="tag">kanban</span> <span class="tag">modal</span> <span class="tag">stage management</span></div>
+    </a>
+    <a class="card" href="countries/">
+      <div class="card-icon">🌍</div>
+      <div class="card-title">Countries Explorer</div>
+      <div class="card-desc">250 countries with flags, population, languages, currencies. Filter and sort.</div>
+      <div class="card-tags"><span class="tag tag-api">REST Countries</span> <span class="tag">search</span> <span class="tag">filter</span></div>
+    </a>
+    <a class="card" href="pokedex/">
+      <div class="card-icon">👾</div>
+      <div class="card-title">Pokédex</div>
+      <div class="card-desc">151 Gen 1 Pokémon. Type filtering, stat bars, abilities, playable cries.</div>
+      <div class="card-tags"><span class="tag tag-api">PokéAPI</span> <span class="tag">batch fetch</span> <span class="tag">detail modal</span></div>
+    </a>
+    <a class="card" href="reddit/">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">Reddit Browser</div>
+      <div class="card-desc">Browse subreddits with posts, scores, image previews and sort options.</div>
+      <div class="card-tags"><span class="tag tag-api">JSONP</span> <span class="tag">1 request</span> <span class="tag">navigation</span></div>
+    </a>
+    <a class="card" href="ghub/">
+      <div class="card-icon">🐙</div>
+      <div class="card-title">GitHub Browser</div>
+      <div class="card-desc">Browse any user's repos with live API data. File tree and README on demand.</div>
+      <div class="card-tags"><span class="tag tag-api">GitHub API</span> <span class="tag">boot options</span></div>
+    </a>
   </div>
 
-  <div class="example">
-    <h2><a href="/crm/">CRM</a></h2>
-    <p>Kanban pipeline with deal cards, contact directory, activity timeline. The React competitor — one JSON-LD file, two panes, ~400 lines.</p>
-    <span class="tag">kanban</span> <span class="tag">modal detail</span> <span class="tag">stage management</span> <span class="tag">activity timeline</span>
+  <div class="section-title">Universal Browser</div>
+  <div class="grid">
+    <div class="card" style="grid-column: 1 / -1;">
+      <div class="card-icon">🔗</div>
+      <div class="card-title"><a href="jsonrocks/">json.rocks Browser</a></div>
+      <div class="card-desc">Paste any URL — site-specific panes for GitHub, Reddit, Hacker News, Bitcoin. Everything else rendered via json.rocks.</div>
+      <div class="card-tags"><span class="tag tag-api">GitHub</span> <span class="tag tag-api">Reddit</span> <span class="tag tag-api">HN</span> <span class="tag tag-api">mempool</span> <span class="tag">7 panes</span></div>
+      <div class="try-links">Try: <a href="jsonrocks/?uri=https://news.ycombinator.com">Hacker News</a> <a href="jsonrocks/?uri=https://mempool.space">Bitcoin</a> <a href="jsonrocks/?uri=https://github.com/nicehash">GitHub Org</a></div>
+    </div>
   </div>
 
-  <div class="example">
-    <h2><a href="reddit/">Reddit Browser</a></h2>
-    <p>Browse subreddits with posts, scores, image previews, and sort options. Type a subreddit name to navigate.</p>
-    <span class="tag">JSONP</span> <span class="tag">1 request</span> <span class="tag">on-demand navigation</span>
-  </div>
-
-  <div class="example">
-    <h2><a href="countries/">Countries Explorer</a></h2>
-    <p>250 countries with flags, population, languages, currencies. Filter by region, sort by population/name/area.</p>
-    <span class="tag">REST API</span> <span class="tag">2 requests</span> <span class="tag">search + filter + sort</span>
-  </div>
-
-  <div class="example">
-    <h2><a href="pokedex/">Pokédex</a></h2>
-    <p>All 151 Gen 1 Pokémon from PokéAPI. Type filtering, stat bars, abilities, playable cries.</p>
-    <span class="tag">batch fetch</span> <span class="tag">151 requests</span> <span class="tag">detail modal</span>
-  </div>
-
-  <div class="example">
-    <h2><a href="ghub/">GitHub Browser</a></h2>
-    <p>Browse any GitHub user's repos with live API data. File tree and README load on demand.</p>
-    <span class="tag">GitHub API</span> <span class="tag">boot options</span> <span class="tag">?user=torvalds</span>
-  </div>
-
-  <div class="example">
-    <h2><a href="jsonrocks/">json.rocks Browser</a></h2>
-    <p>A universal data browser. Try: <a href="jsonrocks/?uri=https://github.com/nicehash">GitHub org</a> · <a href="jsonrocks/?uri=https://www.reddit.com/r/bitcoin">Reddit</a> · <a href="jsonrocks/?uri=https://news.ycombinator.com">Hacker News</a> · <a href="jsonrocks/?uri=https://mempool.space">Bitcoin</a></p>
-    <span class="tag">json.rocks</span> <span class="tag">GitHub</span> <span class="tag">Reddit</span> <span class="tag">HN</span> <span class="tag">mempool</span> <span class="tag">7 panes</span>
-  </div>
-
-    <div class="example">
-    <h2><a href="dashboard/">Team Dashboard</a></h2>
-    <p>Nested panes in action. A dashboard composed of PersonCard, TaskList, and NoteCard panes — each resolved by @type.</p>
-    <span class="tag">nested panes</span> <span class="tag">resolvePane</span> <span class="tag">static data</span>
-  </div>
-
-  <div class="example">
-    <h2><a href="react-test/">React Pane (mashlib-next compat)</a></h2>
-    <p>A mashlib-next React pane running unmodified on LOSOS's shell. Pane from mashlib.com, React from esm.sh, shell from losos.org. Zero code changes.</p>
-    <span class="tag">mashlib-next</span> <span class="tag">React 19</span> <span class="tag">cross-origin panes</span>
+  <div class="section-title">Architecture</div>
+  <div class="grid">
+    <a class="card" href="dashboard/">
+      <div class="card-icon">📋</div>
+      <div class="card-title">Team Dashboard</div>
+      <div class="card-desc">Nested panes — PersonCard, TaskList, NoteCard composed via resolvePane by @type.</div>
+      <div class="card-tags"><span class="tag">nested panes</span> <span class="tag">resolvePane</span></div>
+    </a>
+    <a class="card" href="react-test/">
+      <div class="card-icon">⚛️</div>
+      <div class="card-title">React Pane</div>
+      <div class="card-desc">mashlib-next React pane running unmodified on LOSOS. Pane from mashlib.com, React from esm.sh.</div>
+      <div class="card-tags"><span class="tag tag-compat">mashlib-next</span> <span class="tag tag-compat">React 19</span> <span class="tag">cross-origin</span></div>
+    </a>
   </div>
 
   <footer>
-    <a href="/">← LOSOS Home</a> · 6KB · no build step
+    <a href="/">← LOSOS Home</a> · <a href="/docs/">Docs</a> · 6KB · no build step
   </footer>
 </div>
 </body>

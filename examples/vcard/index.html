@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact Card — LOSOS</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: #f5f5f7; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #888 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #667eea !important; font-weight: 600 !important; }
+  </style>
+</head>
+<body>
+  <script type="application/ld+json" src="vcard-data.jsonld"></script>
+  <script type="module" data-pane src="../../panes/schema-pane.js"></script>
+  <script type="module" data-pane src="panes/profile-pane.js"></script>
+  <script type="module" data-pane src="panes/source-pane.js"></script>
+  <div id="losos"></div>
+  <script type="module" src="../../losos/shell.js"></script>
+</body>
+</html>

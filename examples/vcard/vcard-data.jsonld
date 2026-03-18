@@ -1,0 +1,40 @@
+{
+  "@context": {
+    "vcard": "http://www.w3.org/2006/vcard/ns#",
+    "schema": "https://schema.org/",
+    "name": "vcard:fn",
+    "givenName": "vcard:given-name",
+    "familyName": "vcard:family-name",
+    "photo": "vcard:hasPhoto",
+    "jobTitle": "vcard:title",
+    "organization": "vcard:organization-name",
+    "email": "vcard:hasEmail",
+    "phone": "vcard:hasTelephone",
+    "address": "vcard:hasAddress",
+    "url": "vcard:hasURL",
+    "birthday": "vcard:bday",
+    "notes": "vcard:note",
+    "type": "vcard:Type",
+    "value": "vcard:value",
+    "Contact": "vcard:Individual"
+  },
+  "@id": "#this",
+  "@type": "Contact",
+  "$schema": "vcard-schema.json",
+  "name": "Tim Berners-Lee",
+  "givenName": "Tim",
+  "familyName": "Berners-Lee",
+  "photo": "https://www.w3.org/People/Berners-Lee/Press/stock-photos/tim-berners-lee-inrupt-2024.jpg",
+  "jobTitle": "Inventor of the World Wide Web",
+  "organization": "W3C / Inrupt",
+  "email": [
+    { "@id": "#email1", "type": "Work", "value": "timbl@w3.org" }
+  ],
+  "phone": [
+    { "@id": "#phone1", "type": "Work", "value": "+1 617 253 5702" }
+  ],
+  "address": "32 Vassar Street, Cambridge, MA 02139",
+  "url": "https://www.w3.org/People/Berners-Lee/",
+  "birthday": "1955-06-08",
+  "notes": "Sir Timothy John Berners-Lee, inventor of the World Wide Web, director of W3C, and founder of the World Wide Web Foundation. Pioneer of linked data and the Solid project for re-decentralizing the web."
+}
