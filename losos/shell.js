@@ -55,11 +55,23 @@ async function loadData() {
     }
   }
 
-  return { store, rawData }
+  // Resolve base URL for absolute URI resolution
+  var dataEl = document.querySelector('script[type="application/ld+json"]')
+  var baseUrl = ''
+  if (dataEl && dataEl.getAttribute('src')) {
+    baseUrl = new URL(dataEl.getAttribute('src'), window.location.href).href
+  } else {
+    baseUrl = window.location.href.replace(/[?#].*$/, '')
+  }
+
+  return { store, rawData, baseUrl }
 }
 
 /** Create a rdflib-compatible NamedNode */
-function namedNode(value) {
+function namedNode(value, baseUrl) {
+  if (baseUrl && value.startsWith('#')) {
+    value = baseUrl + value
+  }
   var docUri = value.replace(/#.*$/, '') || value
   return {
     termType: 'NamedNode',
@@ -71,12 +83,12 @@ function namedNode(value) {
 }
 
 /** Find the primary subject (@id or #this) */
-function findSubject(store) {
+function findSubject(store, baseUrl) {
   const hashThis = store.get('#this')
-  if (hashThis) return namedNode('#this')
+  if (hashThis) return namedNode('#this', baseUrl)
 
   for (const [id, node] of store.nodes) {
-    if (node['@type']) return namedNode(id)
+    if (node['@type']) return namedNode(id, baseUrl)
   }
 
   return null
@@ -177,7 +189,10 @@ export async function resolvePane(node, store, container, rawData, opts) {
   opts = opts || {}
   var panes = opts.panes || _panes
   var registry = opts.registry || _registry
-  var subject = namedNode(node['@id'] || '#this')
+  var baseUrl = window.location.href.replace(/[?#].*$/, '')
+  var dataEl = document.querySelector('script[type="application/ld+json"]')
+  if (dataEl && dataEl.getAttribute('src')) baseUrl = new URL(dataEl.getAttribute('src'), window.location.href).href
+  var subject = namedNode(node['@id'] || '#this', baseUrl)
 
   // 1. Local panes — first canHandle match
   for (var pane of panes) {
@@ -240,11 +255,11 @@ export async function resolvePane(node, store, container, rawData, opts) {
 export async function boot(el, opts) {
   opts = opts || {}
   const root = typeof el === 'string' ? document.querySelector(el)
-    : el || document.getElementById('losos') || document.body
+    : el || document.getElementById('solid') || document.getElementById('losos') || document.getElementById('mashlib') || document.getElementById('app') || document.body
 
   const { store, rawData } = await Promise.all([loadPanes(), loadData()])
     .then(([panes, dataResult]) => {
-      const subject = findSubject(dataResult.store)
+      const subject = findSubject(dataResult.store, dataResult.baseUrl)
       if (!subject) {
         root.innerHTML = '<p style="padding:2em;color:#888">No data found.</p>'
         return { panes: [], store: null, rawData: null, subject: null }
@@ -259,7 +274,7 @@ export async function boot(el, opts) {
 /** Access/extend the registry */
 export { _registry as registry }
 
-// Auto-boot if a #losos element exists
-if (document.getElementById('losos')) {
+// Auto-boot if a known container exists
+if (document.getElementById('solid') || document.getElementById('losos') || document.getElementById('mashlib') || document.getElementById('app')) {
   boot()
 }

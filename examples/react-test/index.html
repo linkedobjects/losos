@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>React Pane on LOSOS</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: #fafafa; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #888 !important; font-weight: 500 !important; }
+    button.pane-tab[aria-selected="true"] { color: #2563eb !important; font-weight: 600 !important; }
+  </style>
+</head>
+<body>
+  <script type="application/ld+json">
+  {
+    "@context": {
+      "foaf": "http://xmlns.com/foaf/0.1/",
+      "schema": "https://schema.org/",
+      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    },
+    "@id": "#this",
+    "@type": "foaf:Person",
+    "foaf:name": "Ada Lovelace",
+    "foaf:mbox": { "@id": "mailto:ada@example.org" },
+    "schema:jobTitle": "Mathematician & first programmer",
+    "foaf:img": { "@id": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Ada_Lovelace_portrait.jpg" },
+    "foaf:homepage": { "@id": "https://en.wikipedia.org/wiki/Ada_Lovelace" }
+  }
+  </script>
+  <script type="module" data-pane src="https://mashlib.com/examples/react-pane.js"></script>
+  <div id="losos"></div>
+  <script type="module" src="https://losos.org/losos/shell.js"></script>
+</body>
+</html>

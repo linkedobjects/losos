@@ -58,9 +58,17 @@ export class Store {
     return term
   }
 
-  /** Get a node by @id */
+  /** Get a node by @id — also tries fragment-only for absolute URIs */
   get(id) {
-    return this.nodes.get(id) || null
+    if (!id) return null
+    var node = this.nodes.get(id)
+    if (node) return node
+    var hash = id.indexOf('#')
+    if (hash > 0) {
+      node = this.nodes.get(id.slice(hash))
+      if (node) return node
+    }
+    return null
   }
 
   /** Get a property value from a node */
