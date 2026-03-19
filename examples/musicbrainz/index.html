@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MusicBrainz Browser</title>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #111; }
+    #losos { max-width: 100% !important; }
+    #losos > div { max-width: 100% !important; width: 100% !important; }
+    button.pane-tab { color: #999 !important; font-weight: 500 !important; background: transparent !important; border: none; padding: 8px 16px; cursor: pointer; }
+    button.pane-tab[aria-selected="true"] { color: #e11d48 !important; font-weight: 600 !important; border-bottom: 2px solid #e11d48 !important; }
+    .boot-loading {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 80vh; color: #999; font-size: 16px; gap: 20px;
+    }
+    .boot-spinner {
+      width: 44px; height: 44px;
+      border: 3px solid #e5e5e5; border-top-color: #e11d48;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .boot-status { font-size: 13px; color: #aaa; }
+  </style>
+</head>
+<body>
+
+<script id="data" type="application/ld+json"></script>
+<script type="module" data-pane src="panes/music-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+
+<div id="losos">
+  <div class="boot-loading">
+    <div class="boot-spinner"></div>
+    <div>Loading music from MusicBrainz...</div>
+    <div class="boot-status" id="boot-status"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var dataEl = document.getElementById('data')
+  var statusEl = document.getElementById('boot-status')
+  var MB_API = 'https://musicbrainz.org/ws/2'
+
+  var context = {
+    "schema": "http://schema.org/",
+    "dct": "http://purl.org/dc/terms/",
+    "mb": "https://musicbrainz.org/",
+    "title": "dct:title",
+    "releases": "schema:hasPart",
+    "name": "schema:name",
+    "artist": "schema:byArtist",
+    "image": "schema:image",
+    "genre": "schema:genre",
+    "releaseDate": "schema:datePublished",
+    "releaseType": "schema:additionalType",
+    "mbid": "schema:identifier",
+    "score": "schema:ratingValue",
+    "MusicCatalog": "schema:MusicPlaylist",
+    "MusicAlbum": "schema:MusicAlbum"
+  }
+
+  function status(msg) {
+    if (statusEl) statusEl.textContent = msg
+  }
+
+  function delay(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms) })
+  }
+
+  function mbFetch(path) {
+    return fetch(MB_API + path, {
+      headers: { 'Accept': 'application/json' }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('MusicBrainz API error: ' + r.status)
+      return r.json()
+    })
+  }
+
+  function coverArtUrl(mbid) {
+    return 'https://coverartarchive.org/release-group/' + mbid + '/front-250'
+  }
+
+  function extractYear(dateStr) {
+    if (!dateStr) return null
+    var m = dateStr.match(/(\d{4})/)
+    return m ? parseInt(m[1]) : null
+  }
+
+  function searchByTag(tag, limit) {
+    var q = encodeURIComponent('tag:"' + tag + '"')
+    return mbFetch('/release-group?query=' + q + '&type=album&limit=' + limit + '&fmt=json')
+  }
+
+  var seedGenres = ['rock', 'pop', 'jazz', 'electronic', 'hip hop', 'classical', 'soul', 'metal', 'folk', 'blues']
+
+  status('Fetching albums from MusicBrainz...')
+
+  var seen = {}
+  var allReleases = []
+  var loaded = 0
+
+  function loadGenre(genre) {
+    status('Loading ' + genre + ' albums... (' + (loaded + 1) + '/' + seedGenres.length + ')')
+    return searchByTag(genre, 100).then(function(data) {
+      var groups = data['release-groups'] || []
+      groups.forEach(function(rg) {
+        if (seen[rg.id]) return
+        seen[rg.id] = true
+
+        var artists = (rg['artist-credit'] || []).map(function(ac) {
+          return ac.artist ? ac.artist.name : (ac.name || '')
+        }).filter(Boolean)
+
+        var tags = (rg.tags || [])
+          .sort(function(a, b) { return (b.count || 0) - (a.count || 0) })
+          .map(function(t) { return t.name })
+          .slice(0, 5)
+
+        allReleases.push({
+          "@id": "#" + rg.id,
+          "@type": "MusicAlbum",
+          "name": rg.title || '',
+          "artist": artists.join(', '),
+          "image": coverArtUrl(rg.id),
+          "genre": tags.join(', '),
+          "releaseDate": rg['first-release-date'] || '',
+          "releaseYear": extractYear(rg['first-release-date']),
+          "releaseType": rg['primary-type'] || 'Album',
+          "mbid": rg.id,
+          "score": rg.score || 0
+        })
+      })
+      loaded++
+    }).catch(function(err) {
+      console.warn('Failed to load genre ' + genre + ':', err)
+      loaded++
+    })
+  }
+
+  function loadAllGenres(genres, index) {
+    if (index >= genres.length) return Promise.resolve()
+    return loadGenre(genres[index]).then(function() {
+      if (index + 1 < genres.length) {
+        return delay(1100).then(function() {
+          return loadAllGenres(genres, index + 1)
+        })
+      }
+    })
+  }
+
+  loadAllGenres(seedGenres, 0).then(function() {
+    allReleases.sort(function(a, b) { return (b.score || 0) - (a.score || 0) })
+
+    status('Loaded ' + allReleases.length + ' albums')
+
+    var jsonLd = {
+      "@context": context,
+      "@id": "#this",
+      "@type": "MusicCatalog",
+      "title": "MusicBrainz Browser",
+      "releases": allReleases
+    }
+
+    window.__musicData = jsonLd
+    dataEl.textContent = JSON.stringify(jsonLd)
+    document.getElementById('losos').textContent = ''
+
+    var s = document.createElement('script')
+    s.type = 'module'
+    s.src = '../../losos/shell.js'
+    document.body.appendChild(s)
+
+  }).catch(function(err) {
+    console.warn('MusicBrainz load failed:', err)
+    var boot = document.querySelector('.boot-loading')
+    if (boot) {
+      boot.innerHTML =
+        '<div style="font-size: 48px; margin-bottom: 16px;">&#127925;</div>' +
+        '<div style="color: #ef4444;">Failed to load data from MusicBrainz</div>' +
+        '<div style="color: #999; font-size: 14px; margin-top: 8px;">' + err.message + '</div>' +
+        '<button onclick="location.reload()" style="margin-top: 20px; padding: 10px 24px; background: #e11d48; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">Retry</button>'
+    }
+  })
+})()
+</script>
+</body>
+</html>
