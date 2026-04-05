@@ -17,7 +17,7 @@ export function onUnmount(container, fn) {
   }).observe(parent, { childList: true })
 }
 
-var HOLE = '\u200B\u200C\u200B'  // zero-width chars — survives innerHTML
+var HOLE = '<!--losos-->'  // comment marker — survives inside <table>
 var cache = new WeakMap()
 
 export function html(strings) {
@@ -79,21 +79,13 @@ export function render(container, template) {
 }
 
 function findParts(node, parts) {
-  if (node.nodeType === 3) {
-    // Text node — split on HOLE markers
-    var text = node.textContent
-    if (text.indexOf(HOLE) === -1) return
-    var pieces = text.split(HOLE)
+  if (node.nodeType === 8 && node.textContent === 'losos') {
+    // Comment marker — replace with empty text node for content insertion
     var parent = node.parentNode
-    for (var i = 0; i < pieces.length; i++) {
-      if (pieces[i]) parent.insertBefore(document.createTextNode(pieces[i]), node)
-      if (i < pieces.length - 1) {
-        var marker = document.createTextNode('')
-        parent.insertBefore(marker, node)
-        parts.push({ type: 'text', node: marker })
-      }
-    }
+    var marker = document.createTextNode('')
+    parent.insertBefore(marker, node)
     parent.removeChild(node)
+    parts.push({ type: 'text', node: marker })
     return
   }
 
