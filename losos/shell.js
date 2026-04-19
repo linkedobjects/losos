@@ -5,11 +5,13 @@
 
 import { createStore } from '../lion/index.js'
 import defaultRegistry from './registry.js'
+import { loadIndex as loadUrnSolidIndex, resolve as resolveUrnSolid } from './urn-solid-resolver.js'
 
 // Module-level state — available to resolvePane after boot
 var _panes = []
 var _registry = Object.assign({}, defaultRegistry)
 var _paneCache = new Map()  // url → pane module
+var _urnSolidIndex = null   // populated lazily on first registry lookup
 
 /** Load all registered panes from data-pane script tags */
 async function loadPanes() {
@@ -250,9 +252,21 @@ export async function resolvePane(node, store, container, rawData, opts) {
   }
 
   // 3. Registry — @type → pane URL
+  // Try direct match first (preserves existing registrations like 'wf:Tracker'),
+  // then fall back to the urn:solid canonical form so a pane registered against
+  // 'urn:solid:Person' also matches incoming 'foaf:Person', 'schema:Person', etc.
   var type = node['@type']
-  if (type && registry[type]) {
-    var regUrl = registry[type]
+  var regUrl = null
+  if (type) {
+    if (registry[type]) {
+      regUrl = registry[type]
+    } else {
+      if (!_urnSolidIndex) _urnSolidIndex = await loadUrnSolidIndex()
+      var canonical = resolveUrnSolid(type, _urnSolidIndex)
+      if (canonical !== type && registry[canonical]) regUrl = registry[canonical]
+    }
+  }
+  if (regUrl) {
     try {
       var mod = _paneCache.get(regUrl)
       if (!mod) {
