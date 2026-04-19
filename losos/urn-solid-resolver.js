@@ -5,9 +5,21 @@
  * 'urn:solid:Person') match incoming data whose @type is the equivalent
  * upstream IRI (foaf:Person, schema:Person, etc.). The registry at
  * urn-solid.github.io publishes the reverse-lookup table; this module
- * fetches it once and uses it to normalise types/predicates at read time.
+ * fetches it once and adds aliases to your existing pane registry — so
+ * registry lookup stays a plain object access with no shell changes.
  *
- * Optional. Apps that don't import this module behave exactly as before.
+ * Standalone module. Pure opt-in. Not imported by the LOSOS shell.
+ *
+ * Recommended usage (~3 lines in your app):
+ *
+ *   import { registry } from './losos/shell.js'
+ *   import { expandRegistry } from './losos/urn-solid-resolver.js'
+ *   await expandRegistry(registry)
+ *
+ * After that, a pane registered against 'urn:solid:Person' will also match
+ * incoming 'http://xmlns.com/foaf/0.1/Person', 'https://schema.org/Person',
+ * etc. — because the registry now has those upstream IRIs as aliases for
+ * the same pane URL.
  *
  * Spec: https://urn-solid.github.io/spec/
  * Reverse index: https://urn-solid.github.io/reverse-index.json
@@ -72,17 +84,27 @@ export function normalize(obj, index) {
 }
 
 /**
- * Convenience: async (type) → canonical urn:solid form.
- * Loads the index lazily on first call. Pass directly to
- * the LOSOS shell's setTypeResolver():
+ * Add upstream-IRI aliases to a pane registry, in place.
  *
- *   import { setTypeResolver } from './losos/shell.js'
- *   import { resolveType } from './losos/urn-solid-resolver.js'
- *   setTypeResolver(resolveType)
+ * For every entry `registry[urn:solid:X] = paneUrl` you have, after this
+ * call the registry will also contain the matching upstream IRI keys
+ * (e.g. `registry['http://xmlns.com/foaf/0.1/Person'] = paneUrl`). Means
+ * the shell's existing direct-lookup path matches cross-vocab data with
+ * no shell changes.
+ *
+ *   import { registry } from './losos/shell.js'
+ *   import { expandRegistry } from './losos/urn-solid-resolver.js'
+ *   registry['urn:solid:Person'] = './panes/person-pane.js'
+ *   await expandRegistry(registry)
+ *
+ * Idempotent. Safe to call multiple times.
  */
-export async function resolveType(type) {
+export async function expandRegistry(registry) {
   const idx = await loadIndex()
-  return resolve(type, idx)
+  for (const [iri, urn] of Object.entries(idx)) {
+    if (registry[urn] && !registry[iri]) registry[iri] = registry[urn]
+  }
+  return registry
 }
 
 /** Reset the cached index (useful in tests). */
