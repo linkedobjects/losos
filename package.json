@@ -1,6 +1,6 @@
 {
   "name": "@linkedobjects/losos",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A 6KB reactive framework for building apps on linked data. No build step. No dependencies. No virtual DOM.",
   "type": "module",
   "main": "losos/losos.js",
