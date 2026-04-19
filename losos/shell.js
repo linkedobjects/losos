@@ -5,13 +5,12 @@
 
 import { createStore } from '../lion/index.js'
 import defaultRegistry from './registry.js'
-import { loadIndex as loadUrnSolidIndex, resolve as resolveUrnSolid } from './urn-solid-resolver.js'
 
 // Module-level state — available to resolvePane after boot
 var _panes = []
 var _registry = Object.assign({}, defaultRegistry)
 var _paneCache = new Map()  // url → pane module
-var _urnSolidIndex = null   // populated lazily on first registry lookup
+var _typeResolver = null    // optional async fn(type) → canonicalType (e.g. urn:solid resolver)
 
 /** Load all registered panes from data-pane script tags */
 async function loadPanes() {
@@ -252,18 +251,21 @@ export async function resolvePane(node, store, container, rawData, opts) {
   }
 
   // 3. Registry — @type → pane URL
-  // Try direct match first (preserves existing registrations like 'wf:Tracker'),
-  // then fall back to the urn:solid canonical form so a pane registered against
-  // 'urn:solid:Person' also matches incoming 'foaf:Person', 'schema:Person', etc.
+  // Try direct match first (preserves existing registrations like 'wf:Tracker').
+  // If a type resolver was wired in (e.g. setTypeResolver(urnSolid.resolveType)),
+  // try the canonical form on miss — lets one pane match many upstream IRIs.
   var type = node['@type']
   var regUrl = null
   if (type) {
     if (registry[type]) {
       regUrl = registry[type]
-    } else {
-      if (!_urnSolidIndex) _urnSolidIndex = await loadUrnSolidIndex()
-      var canonical = resolveUrnSolid(type, _urnSolidIndex)
-      if (canonical !== type && registry[canonical]) regUrl = registry[canonical]
+    } else if (_typeResolver) {
+      try {
+        var canonical = await _typeResolver(type)
+        if (canonical && canonical !== type && registry[canonical]) regUrl = registry[canonical]
+      } catch (err) {
+        console.warn('[losos] type resolver failed:', type, err)
+      }
     }
   }
   if (regUrl) {
@@ -311,6 +313,19 @@ export async function boot(el, opts) {
 
 /** Access/extend the registry */
 export { _registry as registry }
+
+/** Wire in an optional type resolver — async fn(type) returning a canonical
+ *  form to retry registry lookup with. Call once at app startup, before boot.
+ *  Pass null to clear.
+ *
+ *  Example (urn:solid resolution):
+ *    import { setTypeResolver } from './losos/shell.js'
+ *    import { resolveType } from './losos/urn-solid-resolver.js'
+ *    setTypeResolver(resolveType)
+ */
+export function setTypeResolver(fn) {
+  _typeResolver = fn
+}
 
 // Auto-boot if a known container exists
 if (document.getElementById('solid') || document.getElementById('losos') || document.getElementById('mashlib') || document.getElementById('app')) {

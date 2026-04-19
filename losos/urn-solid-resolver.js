@@ -71,6 +71,20 @@ export function normalize(obj, index) {
   return out
 }
 
+/**
+ * Convenience: async (type) → canonical urn:solid form.
+ * Loads the index lazily on first call. Pass directly to
+ * the LOSOS shell's setTypeResolver():
+ *
+ *   import { setTypeResolver } from './losos/shell.js'
+ *   import { resolveType } from './losos/urn-solid-resolver.js'
+ *   setTypeResolver(resolveType)
+ */
+export async function resolveType(type) {
+  const idx = await loadIndex()
+  return resolve(type, idx)
+}
+
 /** Reset the cached index (useful in tests). */
 export function _reset() {
   _index = null
