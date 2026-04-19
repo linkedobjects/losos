@@ -177,3 +177,128 @@ test('Namespace creates NamedNode', () => {
   assert.equal(node.value, 'https://schema.org/name')
   assert.equal(node.termType, 'NamedNode')
 })
+
+// ========== urn-solid-resolver.js ==========
+
+import { resolve, normalize, loadIndex, expandRegistry, _reset as _resetUrnSolid } from './losos/urn-solid-resolver.js'
+
+const FIXTURE_INDEX = {
+  'http://xmlns.com/foaf/0.1/Person': 'urn:solid:Person',
+  'https://schema.org/Person': 'urn:solid:Person',
+  'http://xmlns.com/foaf/0.1/name': 'urn:solid:name'
+}
+
+test('resolve: urn:solid:* passes through unchanged', () => {
+  assert.equal(resolve('urn:solid:Person', FIXTURE_INDEX), 'urn:solid:Person')
+})
+
+test('resolve: absolute IRI in index → urn:solid form', () => {
+  assert.equal(resolve('http://xmlns.com/foaf/0.1/Person', FIXTURE_INDEX), 'urn:solid:Person')
+  assert.equal(resolve('https://schema.org/Person', FIXTURE_INDEX), 'urn:solid:Person')
+})
+
+test('resolve: absolute IRI not in index → unchanged', () => {
+  assert.equal(resolve('http://example.org/Unknown', FIXTURE_INDEX), 'http://example.org/Unknown')
+})
+
+test('resolve: bare name → urn:solid:<name> (LION SHOULD default)', () => {
+  assert.equal(resolve('Person', FIXTURE_INDEX), 'urn:solid:Person')
+  assert.equal(resolve('name', FIXTURE_INDEX), 'urn:solid:name')
+})
+
+test('resolve: empty/null pass through', () => {
+  assert.equal(resolve('', FIXTURE_INDEX), '')
+  assert.equal(resolve(null, FIXTURE_INDEX), null)
+  assert.equal(resolve(undefined, FIXTURE_INDEX), undefined)
+})
+
+test('normalize: rewrites @type and predicate keys', () => {
+  var input = { '@id': 'x', '@type': 'http://xmlns.com/foaf/0.1/Person', 'http://xmlns.com/foaf/0.1/name': 'Alice' }
+  var out = normalize(input, FIXTURE_INDEX)
+  assert.equal(out['@id'], 'x')
+  assert.equal(out['@type'], 'urn:solid:Person')
+  assert.equal(out['urn:solid:name'], 'Alice')
+  assert.equal(input['@type'], 'http://xmlns.com/foaf/0.1/Person')   // input untouched
+})
+
+test('normalize: handles @type arrays', () => {
+  var out = normalize({ '@type': ['http://xmlns.com/foaf/0.1/Person', 'https://schema.org/Person'] }, FIXTURE_INDEX)
+  assert.deepEqual(out['@type'], ['urn:solid:Person', 'urn:solid:Person'])
+})
+
+test('normalize: recurses into @graph', () => {
+  var input = { '@graph': [{ '@type': 'http://xmlns.com/foaf/0.1/Person', '@id': 'a' }] }
+  var out = normalize(input, FIXTURE_INDEX)
+  assert.equal(out['@graph'][0]['@type'], 'urn:solid:Person')
+})
+
+test('normalize: recurses into @included and @list', () => {
+  var out1 = normalize({ '@included': [{ '@type': 'http://xmlns.com/foaf/0.1/Person' }] }, FIXTURE_INDEX)
+  assert.equal(out1['@included'][0]['@type'], 'urn:solid:Person')
+  var out2 = normalize({ '@list': [{ '@type': 'http://xmlns.com/foaf/0.1/Person' }] }, FIXTURE_INDEX)
+  assert.equal(out2['@list'][0]['@type'], 'urn:solid:Person')
+})
+
+test('normalize: passes through @id and @context', () => {
+  var out = normalize({ '@id': 'x', '@context': { 'foaf': 'http://xmlns.com/foaf/0.1/' } }, FIXTURE_INDEX)
+  assert.equal(out['@id'], 'x')
+  assert.deepEqual(out['@context'], { 'foaf': 'http://xmlns.com/foaf/0.1/' })
+})
+
+test('loadIndex: caches result on success', async () => {
+  _resetUrnSolid()
+  var calls = 0
+  globalThis.fetch = async () => { calls++; return { ok: true, json: async () => FIXTURE_INDEX } }
+  var idx1 = await loadIndex()
+  var idx2 = await loadIndex()
+  assert.equal(calls, 1)
+  assert.deepEqual(idx1, FIXTURE_INDEX)
+  assert.equal(idx1, idx2)        // same reference
+})
+
+test('loadIndex: does NOT cache on non-OK HTTP — retries on next call', async () => {
+  _resetUrnSolid()
+  var calls = 0
+  globalThis.fetch = async () => { calls++; return { ok: false, status: 503, json: async () => ({}) } }
+  var idx1 = await loadIndex()
+  assert.deepEqual(idx1, {})
+  var idx2 = await loadIndex()
+  assert.equal(calls, 2)          // retried — failure not cached
+})
+
+test('loadIndex: does NOT cache on network error — retries on next call', async () => {
+  _resetUrnSolid()
+  var calls = 0
+  globalThis.fetch = async () => { calls++; throw new Error('offline') }
+  await loadIndex()
+  await loadIndex()
+  assert.equal(calls, 2)
+})
+
+test('expandRegistry: aliases upstream IRIs to existing urn:solid pane URLs', async () => {
+  _resetUrnSolid()
+  globalThis.fetch = async () => ({ ok: true, json: async () => FIXTURE_INDEX })
+  var reg = { 'urn:solid:Person': './panes/person.js' }
+  await expandRegistry(reg)
+  assert.equal(reg['http://xmlns.com/foaf/0.1/Person'], './panes/person.js')
+  assert.equal(reg['https://schema.org/Person'], './panes/person.js')
+})
+
+test('expandRegistry: skips aliases when no urn:solid pane is registered', async () => {
+  _resetUrnSolid()
+  globalThis.fetch = async () => ({ ok: true, json: async () => FIXTURE_INDEX })
+  var reg = {}
+  await expandRegistry(reg)
+  assert.equal(reg['http://xmlns.com/foaf/0.1/Person'], undefined)
+})
+
+test('expandRegistry: does not overwrite existing upstream-IRI registrations', async () => {
+  _resetUrnSolid()
+  globalThis.fetch = async () => ({ ok: true, json: async () => FIXTURE_INDEX })
+  var reg = {
+    'urn:solid:Person': './panes/urn-person.js',
+    'http://xmlns.com/foaf/0.1/Person': './panes/foaf-person.js'    // pre-existing, should win
+  }
+  await expandRegistry(reg)
+  assert.equal(reg['http://xmlns.com/foaf/0.1/Person'], './panes/foaf-person.js')
+})

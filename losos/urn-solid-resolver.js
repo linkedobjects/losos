@@ -30,18 +30,28 @@ const REGISTRY_URL = 'https://urn-solid.github.io/reverse-index.json'
 let _index = null
 let _loading = null
 
-/** Fetch and cache the upstream-IRI → urn:solid lookup table. */
+/**
+ * Fetch and cache the upstream-IRI → urn:solid lookup table.
+ *
+ * On success, the index is cached for the rest of the session.
+ * On failure (network error, non-OK HTTP status), nothing is cached
+ * and the call returns {} — subsequent calls will retry the fetch.
+ * This avoids a transient failure (offline boot, captive portal,
+ * server hiccup) silently disabling resolution for the whole session.
+ */
 export async function loadIndex(url) {
   if (_index) return _index
   if (_loading) return _loading
   _loading = fetch(url || REGISTRY_URL)
-    .then(r => r.ok ? r.json() : {})
+    .then(async r => {
+      if (!r.ok) throw new Error('[urn-solid] reverse index fetch returned ' + r.status)
+      return r.json()
+    })
     .then(idx => { _index = idx; _loading = null; return idx })
     .catch(err => {
-      console.warn('[urn-solid] failed to load reverse index:', err)
-      _index = {}
+      console.warn('[urn-solid] failed to load reverse index (will retry on next call):', err)
       _loading = null
-      return _index
+      return {}
     })
   return _loading
 }
@@ -64,9 +74,17 @@ export function resolve(iri, index) {
 }
 
 /**
- * Normalise an entire JSON-LD-shaped object: @type values and predicate
- * keys are mapped to urn:solid form. Returns a new object; input untouched.
+ * Normalise a JSON-LD-shaped node: @type values and predicate keys are
+ * mapped to urn:solid form. Returns a new object; input is untouched.
+ *
+ * Scope: walks plain children and arrays. JSON-LD container keywords
+ * `@graph`, `@included`, `@list`, `@set` are recursed into so nested
+ * nodes get the same treatment. Other `@`-keys (`@id`, `@context`,
+ * `@language`, `@base`, etc.) are passed through untouched — they're
+ * either identifiers/literals or framing constructs that shouldn't be
+ * canonicalised as predicates.
  */
+const _CONTAINER_KEYS = new Set(['@graph', '@included', '@list', '@set'])
 export function normalize(obj, index) {
   if (Array.isArray(obj)) return obj.map(o => normalize(o, index))
   if (obj === null || typeof obj !== 'object') return obj
@@ -74,6 +92,8 @@ export function normalize(obj, index) {
   for (const [k, v] of Object.entries(obj)) {
     if (k === '@type') {
       out[k] = Array.isArray(v) ? v.map(t => resolve(t, index)) : resolve(v, index)
+    } else if (_CONTAINER_KEYS.has(k)) {
+      out[k] = normalize(v, index)
     } else if (k.startsWith('@')) {
       out[k] = v
     } else {
