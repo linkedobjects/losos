@@ -120,12 +120,12 @@ function findSubject(store, baseUrl) {
 /** Render pane tabs with built-in persistence */
 function renderTabs(panes, container, subject, store, rawData, opts) {
   var maxWidth = opts.maxWidth || '960px'
-  var tabColor = opts.tabColor || 'rgba(255,255,255,0.5)'
-  var tabActiveColor = opts.tabActiveColor || 'rgba(255,255,255,0.9)'
+  var tabColor = opts.tabColor || 'rgba(127,127,127,0.55)'
+  var tabActiveColor = opts.tabActiveColor || (opts.accentColor || '#7c3aed')
 
   const tabBar = document.createElement('div')
   tabBar.id = 'pane-tabs'
-  tabBar.style.cssText = 'display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.08);overflow-x:auto;max-width:' + maxWidth + ';margin:0 auto'
+  tabBar.style.cssText = 'display:flex;gap:0;border-bottom:1px solid rgba(127,127,127,0.18);overflow-x:auto;max-width:' + maxWidth + ';margin:0 auto'
 
   const content = document.createElement('div')
   content.id = 'pane-container'
