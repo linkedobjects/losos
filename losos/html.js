@@ -43,8 +43,8 @@ export function render(container, template) {
 
   var prev = cache.get(container)
 
-  // Same template shape — patch only the holes
-  if (prev && prev.strings === template.strings) {
+  // Same template — patch holes. Skip if cached DOM was wiped (#15).
+  if (prev && prev.strings === template.strings && container.firstChild) {
     patch(prev.parts, prev.values, template.values)
     prev.values = template.values
     return
